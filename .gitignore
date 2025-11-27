@@ -1,0 +1,59 @@
+# ----------------------------------------
+# Python cache
+# ----------------------------------------
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# ----------------------------------------
+# Virtual environments
+# ----------------------------------------
+venv/
+env/
+.venv/
+.env/
+
+# ----------------------------------------
+# IDE / Editors
+# ----------------------------------------
+.idea/
+.vscode/
+*.iml
+
+# ----------------------------------------
+# OS files (Windows / Mac)
+# ----------------------------------------
+Thumbs.db
+.DS_Store
+
+# ----------------------------------------
+# Logs and temporary files
+# ----------------------------------------
+*.log
+*.tmp
+*.temp
+
+# ----------------------------------------
+# Generated data (adjust as needed)
+# ----------------------------------------
+# Your 'data/' folder currently has XML configs created by PyCharm.
+# If you add runtime-generated data later, uncomment this:
+# data/*
+# !data/**/*.xml
+
+# ----------------------------------------
+# Backup / cache files
+# ----------------------------------------
+*.bak
+*.swp
+*.swo
+
+# ----------------------------------------
+# Other Python tools
+# ----------------------------------------
+.ipynb_checkpoints/
+.pytest_cache/
+.mypy_cache/
+coverage/
+htmlcov/
