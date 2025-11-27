@@ -1,0 +1,1 @@
+#parametry misji: liczba dronów, zasięg, czas lotu, mapa itd.
