@@ -35,14 +35,6 @@ Thumbs.db
 *.temp
 
 # ----------------------------------------
-# Generated data (adjust as needed)
-# ----------------------------------------
-# Your 'data/' folder currently has XML configs created by PyCharm.
-# If you add runtime-generated data later, uncomment this:
-# data/*
-# !data/**/*.xml
-
-# ----------------------------------------
 # Backup / cache files
 # ----------------------------------------
 *.bak
