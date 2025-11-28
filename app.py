@@ -35,11 +35,32 @@ class DroneApp(tk.Tk):
         self.map_generator.create_maps()
         self.map_points = self.map_generator.maps
 
-        # MODELE DRONÓW
         self.drone_models = {
-            "Model A": {"Zasięg [km]": 1, "Czas lotu [min]": 999, "Pojemność baterii [mAh]": 999},
-            "Model B": {"Zasięg [km]": 15, "Czas lotu [min]": 25, "Pojemność baterii [mAh]": 4000},
-            "Model C": {"Zasięg [km]": 20, "Czas lotu [min]": 30, "Pojemność baterii [mAh]": 5000},
+            "Model": {
+                "Zasięg [m]": 0,
+                "Czas lotu [s]": 0,
+                "Pojemność baterii [mAh]": 0
+            },
+            "DJI Mini 3 Pro": {
+                "Zasięg [m]": 18000,  # 18 km
+                "Czas lotu [s]": 34 * 60,  # 34 min
+                "Pojemność baterii [mAh]": 2453
+            },
+            "DJI Air 2S": {
+                "Zasięg [m]": 18000,
+                "Czas lotu [s]": 31 * 60,
+                "Pojemność baterii [mAh]": 3500
+            },
+            "DJI Mavic 3": {
+                "Zasięg [m]": 30000,
+                "Czas lotu [s]": 46 * 60,
+                "Pojemność baterii [mAh]": 5000
+            },
+            "DJI Matrice 30": {
+                "Zasięg [m]": 30000,
+                "Czas lotu [s]": 41 * 60,
+                "Pojemność baterii [mAh]": 5880
+            }
         }
 
         # główny layout
@@ -309,12 +330,23 @@ class DroneApp(tk.Tk):
         # nagłówek
         tk.Label(info_win, text=f"Mapa: {map_name}", font=("Arial", 12, "bold")).pack(pady=10)
 
+        # WYMIARY MAPY — bounding box
+        xs = [p[0] for p in points]
+        ys = [p[1] for p in points]
+
+        min_x, max_x = min(xs), max(xs)
+        min_y, max_y = min(ys), max(ys)
+
+        width = max_x - min_x
+        height = max_y - min_y
+
         # podstawowe dane
         text = (
             f"Liczba punktów: {num_points}\n"
-            f"Minimalny dystans: {min_dist:.2f}\n"
-            f"Maksymalny dystans: {max_dist:.2f}\n"
-            f"Średni dystans: {avg_dist:.2f}\n"
+            f"Wymiary mapy (szer. × wys.): {width:.2f}m × {height:.2f}m\n"
+            f"Minimalny dystans: {min_dist:.2f}m\n"
+            f"Maksymalny dystans: {max_dist:.2f}m\n"
+            f"Średni dystans: {avg_dist:.2f}m\n"
             "\nPunkty (x, y):\n"
         )
 
@@ -394,7 +426,7 @@ class DroneApp(tk.Tk):
 
             entries = {}
             row_index = 1
-            for param, val in self.drone_models["Model A"].items():
+            for param, val in self.drone_models["Model"].items():
                 tk.Label(frame, text=f"{param}:", bg="#f0f0f0").grid(row=row_index, column=0, sticky="w")
                 entry = ttk.Entry(frame, width=10)
                 entry.insert(0, val)
@@ -425,9 +457,16 @@ class DroneApp(tk.Tk):
         for i, frame in enumerate(self.drone_frames):
             entries = frame.entries
 
-            range_val = float(entries["Zasięg [km]"].get())
-            flight_time_val = float(entries["Czas lotu [min]"].get())
+            range_val = float(entries["Zasięg [m]"].get())
+            flight_time_val = float(entries["Czas lotu [s]"].get())
             battery_val = float(entries["Pojemność baterii [mAh]"].get())
+
+            if range_val <= 0 or flight_time_val <= 0 or battery_val <= 0:
+                messagebox.showerror(
+                    "Błąd parametrów",
+                    f"Dron {i + 1} ma niepoprawne parametry (0 lub mniej)."
+                )
+                return
 
             drone_configs[i] ={
             "range": range_val,

@@ -20,6 +20,7 @@ class MapGenerator:
 
     def create_maps(self):
         """Tworzy przykładowe zestawy punktów (mapy) i zapisuje je w pamięci."""
+        """przyjęto współrzędne 1 jednostka - 1 metr."""
         self.maps["Mapa 1"] = self.generate_random_points(8, (100, 400), (100, 500))
         self.maps["Mapa 2"] = self.generate_random_points(10, (300, 800), (100, 500))
         self.maps["Mapa 3"] = self.generate_grid_points(3, 5, 100)
