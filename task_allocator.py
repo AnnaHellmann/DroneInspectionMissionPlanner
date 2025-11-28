@@ -121,7 +121,7 @@ def allocate_tasks_equally(points: List[Point], num_drones: int) -> Dict[int, Li
     return allocation
 
 def allocate_tasks_kmeans(points: List[Point], num_drones: int) -> Dict[int, List[Point]]:
-    """Podział punktów na podstawie klasteryzacji KMeans (jeśli dostępne)."""
+    """Podział punktów na podstawie klasteryzacji KMeans"""
     if not SKLEARN_AVAILABLE:
         raise ImportError("scikit-learn nie jest zainstalowany. Zainstaluj pakiet sklearn, aby korzystać z KMeans.")
 
