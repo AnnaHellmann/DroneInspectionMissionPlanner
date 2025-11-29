@@ -241,6 +241,8 @@ class DroneApp(tk.Tk):
         # rozpocznij animację
         self.animate()
 
+        print(self.optimized_routes)
+
     def animate(self):
         try:
             frame = next(self.sim_gen)

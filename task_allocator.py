@@ -62,8 +62,8 @@ def proportional_allocate(points, drone_configs):
             idx += 1
 
     # 5. każdy dron wraca do bazy
-    for d in routes:
-        routes[d].append((0.0, 0.0))
+    # for d in routes:
+    #     routes[d].append((0.0, 0.0))
 
     return routes
 
@@ -107,8 +107,8 @@ def allocate_best_fit(points: List[Point], drone_configs: Dict[int, Dict]) -> Di
 
         routes[best_drone].append(p)
 
-    for d in routes:
-        routes[d].append((0.0, 0.0))
+    # for d in routes:
+    #     routes[d].append((0.0, 0.0))
 
     return routes
 
