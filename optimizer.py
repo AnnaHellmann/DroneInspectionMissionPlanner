@@ -41,11 +41,23 @@ class Optimizer:
         )
 
         # --- 2. Wywołanie solvera TSP (GA / PSO)
-        results = self.solver.solve_for_drones(
-            task_allocation,
-            pop_size=80,         # możesz zmieniać
-            generations=300      # możesz zmieniać
-        )
+        if self.tsp_method == "ga":
+            results = self.solver.solve_for_drones(
+                task_allocation,
+                pop_size=80,
+                generations=300,
+                mutation_rate=0.1,
+                crossover_rate=0.9
+            )
+        elif self.tsp_method == "pso":
+            results = self.solver.solve_for_drones(
+                task_allocation,
+                iterations=300,
+                swarm_size=50,
+                w=0.8,
+                c1=1.5,
+                c2=1.5
+            )
 
         # --- 3. Przekształcenie wyników do formatu używanego w app.py
         optimized_routes = {}

@@ -14,20 +14,10 @@ BASE: Point = (0.0, 0.0)
 # ============================================================
 
 class TSPSolver:
-    """
-    Klasa odpowiedzialna za rozwiązywanie problemu TSP
-    metodami metaheurystycznymi: GA oraz PSO.
-    """
 
     def __init__(self, method: str = "ga"):
-        """
-        method: "ga" lub "pso"
-        """
-        self.method = method.lower()
 
-    # -------------------------------------------------------
-    #  HELPERY
-    # -------------------------------------------------------
+        self.method = method.lower()
 
     def compute_distance_matrix(self, points: List[Point]):
         """Buduje macierz odległości Euklidesowych między punktami."""
@@ -107,8 +97,8 @@ class TSPSolver:
     def solve_ga(
         self,
         points: List[Point],
-        pop_size: int = 100,
-        generations: int = 300,
+        pop_size: int = 20,  #100
+        generations: int = 50, #300
         crossover_rate: float = 0.9,
         mutation_rate: float = 0.1,
         tournament_k: int = 3,
@@ -171,20 +161,140 @@ class TSPSolver:
 
         return best_route, best_cost, history, duration
 
-    # -------------------------------------------------------
-    #  PARTICLE SWARM OPTIMIZATION (PSO) – placeholder
-    # -------------------------------------------------------
-
     def solve_pso(
-        self,
-        points: List[Point],
-        iterations: int = 300,
-        swarm_size: int = 50,
+            self,
+            points: List[Point],
+            iterations: int = 50, #300
+            swarm_size: int = 20, #50
+            w: float = 0.8,  # inertia
+            c1: float = 1.5,  # cognitive component
+            c2: float = 1.5,  # social component
     ):
         """
-        Placeholder – w kolejnej iteracji możesz tu dopisać PSO pod TSP.
+        PSO dla problemu TSP (wersja z permutacjami).
+        Zwraca:
+        - najlepszy znaleziony order (permutacja)
+        - koszt trasy
+        - czas wykonania
         """
-        raise NotImplementedError("PSO zostanie dopisane w kolejnym kroku.")
+
+        n = len(points)
+        dist = self.compute_distance_matrix(points)
+
+        # -------------------------------
+        # 1. Inicjalizacja cząstek
+        # -------------------------------
+        particles = []  # pozycje (permutacje)
+        velocities = []  # prędkości (listy swapów)
+        pbest = []  # najlepsza pozycja cząstki
+        pbest_cost = []  # koszt najlepszej pozycji cząstki
+
+        start = time.time()
+
+        for _ in range(swarm_size):
+            perm = list(range(n))
+            random.shuffle(perm)
+            particles.append(perm)
+
+            velocities.append([])  # startowo brak swapów
+
+            cost = self.route_length(perm, dist, points)
+            pbest.append(perm[:])
+            pbest_cost.append(cost)
+
+        # global best
+        gbest_index = min(range(swarm_size), key=lambda i: pbest_cost[i])
+        gbest = pbest[gbest_index][:]
+        gbest_cost = pbest_cost[gbest_index]
+
+        # -------------------------------
+        # 2. Pętla optymalizacyjna PSO
+        # -------------------------------
+        for _ in range(iterations):
+
+            for i in range(swarm_size):
+
+                # -------------------------------
+                # velocity update (swap-based)
+                # -------------------------------
+
+                # dotychczasowa prędkość (inertia)
+                new_velocity = velocities[i][:]
+
+                # różnica: particle → pbest  (list of swaps)
+                diff_pbest = self.permutation_difference(particles[i], pbest[i])
+                # różnica: particle → gbest
+                diff_gbest = self.permutation_difference(particles[i], gbest)
+
+                # cognitive component
+                if random.random() < c1:
+                    new_velocity.extend(diff_pbest)
+
+                # social component
+                if random.random() < c2:
+                    new_velocity.extend(diff_gbest)
+
+                # zbyt długa prędkość niepotrzebna — limitujemy:
+                if len(new_velocity) > n * 3:
+                    new_velocity = new_velocity[-n * 3:]
+
+                velocities[i] = new_velocity
+
+                # -------------------------------
+                # position update (apply swaps)
+                # -------------------------------
+
+                particles[i] = self.apply_swaps(particles[i], velocities[i])
+
+                # -------------------------------
+                # aktualizacja pbest
+                # -------------------------------
+
+                cost = self.route_length(particles[i], dist, points)
+                if cost < pbest_cost[i]:
+                    pbest[i] = particles[i][:]
+                    pbest_cost[i] = cost
+
+                    if cost < gbest_cost:
+                        gbest = particles[i][:]
+                        gbest_cost = cost
+
+        duration = time.time() - start
+
+        return gbest, gbest_cost, duration
+
+    # -------------------------------------------------------
+    #  HELPERS FOR PSO + PERMUTATIONS
+    # -------------------------------------------------------
+
+    def permutation_difference(self, current: List[int], target: List[int]):
+        """
+        Zwraca listę swapów, które przekształcają current → target.
+        Swap reprezentujemy jako tuple (i, j).
+        """
+        diffs = []
+        curr = current[:]
+
+        index = {value: i for i, value in enumerate(curr)}
+
+        for i in range(len(curr)):
+            if curr[i] != target[i]:
+                j = index[target[i]]
+                diffs.append((i, j))
+
+                # wykonaj swap i odśwież index
+                curr[i], curr[j] = curr[j], curr[i]
+                index[curr[i]] = i
+                index[curr[j]] = j
+
+        return diffs
+
+    def apply_swaps(self, perm: List[int], swaps: List[Tuple[int, int]]):
+        """Wykonuje sekwencję swapów na permutacji."""
+        p = perm[:]
+        for i, j in swaps:
+            p[i], p[j] = p[j], p[i]
+        return p
 
     # -------------------------------------------------------
     #  ROZWIĄZYWANIE TSP DLA WIELU DRONÓW

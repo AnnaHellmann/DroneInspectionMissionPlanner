@@ -95,6 +95,17 @@ class DroneApp(tk.Tk):
         ttk.Button(self.sidebar, text="Informacje o mapie", command=self.show_map_info) \
             .pack(fill="x", pady=(5, 10))
 
+        # Wybór metody TSP
+        tk.Label(self.sidebar, text="Algorytm optymalizacji TSP:", bg="#e0e0e0").pack(anchor="w", pady=(10, 0))
+
+        self.tsp_method = ttk.Combobox(
+            self.sidebar,
+            values=["GA", "PSO"],
+            state="readonly"
+        )
+        self.tsp_method.current(0)  # default = GA
+        self.tsp_method.pack(fill="x", pady=5)
+
         ttk.Separator(self.sidebar, orient="horizontal").pack(fill="x", pady=10)
 
         # PRZEWIJANA SEKCJA DRONÓW
@@ -476,7 +487,9 @@ class DroneApp(tk.Tk):
             "battery": battery_val,
             }
 
-        optimizer = Optimizer(drone_configs)
+        selected_method = self.tsp_method.get().lower()  # "ga" lub "pso"
+        optimizer = Optimizer(drone_configs, tsp_method=selected_method)
+
         optimized_routes = optimizer.optimize(points, drones)
 
         if optimized_routes is None:
