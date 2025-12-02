@@ -162,7 +162,7 @@ class TSPSolver:
         return best_route, best_cost, history, duration
 
     def solve_pso(
-            #na podstawie czego dobieram wartosci?
+            #na podstawie czego dobierac wartosci?
             self,
             points: List[Point],
             iterations: int = 50, #300
