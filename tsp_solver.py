@@ -15,7 +15,7 @@ BASE: Point = (0.0, 0.0)
 
 class TSPSolver:
 
-    def __init__(self, method: str = "ga"):
+    def __init__(self, method):
 
         self.method = method.lower()
 
@@ -162,11 +162,12 @@ class TSPSolver:
         return best_route, best_cost, history, duration
 
     def solve_pso(
+            #na podstawie czego dobieram wartosci?
             self,
             points: List[Point],
             iterations: int = 50, #300
             swarm_size: int = 20, #50
-            w: float = 0.8,  # inertia
+            w: float = 0.8,  # inertia niewykorzystywana dla pso permutacji
             c1: float = 1.5,  # cognitive component
             c2: float = 1.5,  # social component
     ):
@@ -226,15 +227,15 @@ class TSPSolver:
                 # różnica: particle → gbest
                 diff_gbest = self.permutation_difference(particles[i], gbest)
 
-                # cognitive component
+                # część kognitywna (swapy w strone własnego najlepszego rozwiązania)
                 if random.random() < c1:
                     new_velocity.extend(diff_pbest)
 
-                # social component
+                # część społeczna (cząstka zmierza w strone najlepszej trasy w swarmie)
                 if random.random() < c2:
                     new_velocity.extend(diff_gbest)
 
-                # zbyt długa prędkość niepotrzebna — limitujemy:
+                # zbyt długa prędkość niepotrzebna — limituje:
                 if len(new_velocity) > n * 3:
                     new_velocity = new_velocity[-n * 3:]
 

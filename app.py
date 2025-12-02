@@ -238,7 +238,7 @@ class DroneApp(tk.Tk):
     # ========= SYMULACJA =========
     def run_simulation(self):
         print("RUN SIMULATION START")
-        if not hasattr(self, "optimized_routes"):
+        if not hasattr(self, "optimized_routes") or len(self.optimized_routes) == 0:
             messagebox.showerror("Błąd", "Najpierw wyznacz trasy!")
             return
 
@@ -490,7 +490,7 @@ class DroneApp(tk.Tk):
         selected_method = self.tsp_method.get().lower()  # "ga" lub "pso"
         optimizer = Optimizer(drone_configs, tsp_method=selected_method)
 
-        optimized_routes = optimizer.optimize(points, drones)
+        optimized_routes, exec_time = optimizer.optimize(points, drones)
 
         if optimized_routes is None:
             messagebox.showerror("Błąd", "Parametry dronów są niewystarczające do wykonania misji.\n\n"
@@ -498,9 +498,20 @@ class DroneApp(tk.Tk):
             return
 
         self.optimized_routes = optimized_routes
-        messagebox.showinfo("Harmonogram", "Trasy wyznaczone pomyślnie.")
+        if not optimized_routes or len(optimized_routes) == 0:
+            messagebox.showerror(
+                "Błąd",
+                "Nie udało się wyznaczyć tras dla dronów."
+            )
+            return
 
-        messagebox.showinfo("Harmonogram", f"Trasy wyznaczone dla {drones} dronów na {map_sel}.")
+
+        messagebox.showinfo(
+            "Harmonogram",
+            f"Trasy wyznaczone pomyślnie.\n\n"
+            f"Czas optymalizacji: {exec_time:.3f} s"
+        )
+
         print(self.optimized_routes)
 
     # ========= SCROLL =========

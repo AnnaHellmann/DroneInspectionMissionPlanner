@@ -2,6 +2,7 @@
 from task_allocator import TaskAllocator
 from tsp_solver import TSPSolver
 from typing import List, Tuple, Dict
+import time
 
 Point = Tuple[float, float]
 
@@ -40,6 +41,8 @@ class Optimizer:
             self.drone_configs
         )
 
+        start_time = time.time()
+
         # --- 2. Wywołanie solvera TSP (GA / PSO)
         if self.tsp_method == "ga":
             results = self.solver.solve_for_drones(
@@ -59,10 +62,13 @@ class Optimizer:
                 c2=1.5
             )
 
+        total_time = time.time() - start_time
+        print(f"[OPTIMIZER] Całkowity czas optymalizacji ({self.tsp_method.upper()}): {total_time:.3f} s")
+
         # --- 3. Przekształcenie wyników do formatu używanego w app.py
         optimized_routes = {}
 
         for drone_id, data in results.items():
             optimized_routes[drone_id] = data["route_coords"]
 
-        return optimized_routes
+        return optimized_routes, total_time
