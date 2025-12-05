@@ -1,36 +1,208 @@
-#rysowanie mapy, trajektorii, animacje lotów
+# visualizer.py
+import tkinter as tk
+from typing import Dict, List, Tuple
 
-import matplotlib.pyplot as plt
-from typing import List, Tuple, Dict
 
-Point = Tuple[float, float]
+class Visualizer:
+    """
+    Klasa odpowiedzialna za rysowanie:
+    - punktów mapy
+    - bazy
+    - tras dronów
+    - animacji lotu dronów
+    - legendy
+    """
 
-def plot_points(points: List[Point], title: str = "Punkty inspekcji"):
-    x, y = zip(*points)
-    plt.figure(figsize=(8, 6))
-    plt.scatter(x, y, c='pink', marker='o')
-    plt.title(title)
-    plt.xlabel("X")
-    plt.ylabel("Y")
-    plt.grid(True)
-    plt.axis('equal')
-    plt.show()
+    def __init__(self, canvas: tk.Canvas):
+        self.canvas = canvas
 
-def plot_paths(drone_paths: Dict[int, List[Point]], title: str):
-    plt.figure(figsize=(10, 8))
-    colors = plt.cm.get_cmap('tab10', len(drone_paths))
+        # parametry skalowania
+        self.scale = 1.0
+        self.offset_x = 0.0
+        self.offset_y = 0.0
 
-    for drone_id, path in drone_paths.items():
-        x, y = zip(*path)
-        plt.plot(x, y, marker='o', label=f"Dron {drone_id}", color=colors(drone_id))
-        plt.scatter(x[0], y[0], color=colors(drone_id), s=100, marker='s', label=f"Start {drone_id}")
+    # =====================================================================
+    # ======================= SKALOWANIE MAPY ==============================
+    # =====================================================================
+    def compute_scaling(self, points: List[Tuple[float, float]]) -> None:
+        """Skaluje i centruje mapę względem rozmiaru Canvas."""
 
-        for i, (px, py) in enumerate(path):
-            plt.text(px, py + 0.8, str(i), fontsize=8, ha='center', color=colors(drone_id))
+        if not points:
+            return
 
-    plt.title(title)
-    plt.xlabel("X")
-    plt.ylabel("Y")
-    plt.grid(True)
-    plt.axis('equal')
-    plt.show()
+        # dodajemy bazę (0,0) do obszaru
+        all_points = points + [(0.0, 0.0)]
+
+        xs = [p[0] for p in all_points]
+        ys = [p[1] for p in all_points]
+
+        min_x, max_x = min(xs), max(xs)
+        min_y, max_y = min(ys), max(ys)
+
+        map_w = max_x - min_x
+        map_h = max_y - min_y
+
+        canvas_w = self.canvas.winfo_width()
+        canvas_h = self.canvas.winfo_height()
+
+        if canvas_w <= 1 or canvas_h <= 1 or map_w == 0 or map_h == 0:
+            # Canvas może nie być jeszcze zainicjalizowany
+            self.canvas.after(50, lambda: self.compute_scaling(points))
+            return
+
+        # skalowanie na 90% dostępnej szerokości/wysokości
+        scale_w = canvas_w * 0.9 / map_w
+        scale_h = canvas_h * 0.9 / map_h
+        self.scale = min(scale_w, scale_h)
+
+        # wycentrowanie
+        self.offset_x = (canvas_w - map_w * self.scale) / 2 - min_x * self.scale
+        self.offset_y = (canvas_h - map_h * self.scale) / 2 - min_y * self.scale
+
+    def transform(self, x: float, y: float) -> Tuple[float, float]:
+        """Konwersja współrzędnych mapy na piksele Canvas."""
+        return x * self.scale + self.offset_x, y * self.scale + self.offset_y
+
+    # =====================================================================
+    # ====================== RYSOWANIE MAPY ================================
+    # =====================================================================
+    def draw_map_points(self, points: List[Tuple[float, float]]) -> None:
+        """Rysuje punkty inspekcji na mapie."""
+        self.canvas.delete("all")
+
+        for x, y in points:
+            sx, sy = self.transform(x, y)
+            # małe czerwone punkty (jak w show_selected_map)
+            self.canvas.create_arc(
+                sx - 5, sy - 5, sx + 5, sy + 5,
+                start=0, extent=359,
+                fill="red",
+                outline="black",
+                style="pieslice"
+            )
+
+    def draw_base(self) -> None:
+        """Rysuje bazę dronów w punkcie (0,0)."""
+        bx, by = self.transform(0.0, 0.0)
+        self.canvas.create_rectangle(bx - 6, by - 6, bx + 6, by + 6, fill="black")
+        self.canvas.create_text(bx + 12, by, text="Baza", fill="black", anchor="w")
+
+    # =====================================================================
+    # ===================== RYSOWANIE TRAS TSP ============================
+    # =====================================================================
+    def draw_routes(self, routes: Dict[int, List[Tuple[float, float]]], colors: List[str]) -> None:
+        """Rysuje optymalne trasy dla każdego drona."""
+        for drone_id, route in routes.items():
+            color = colors[drone_id % len(colors)]
+            for i in range(len(route) - 1):
+                x1, y1 = self.transform(*route[i])
+                x2, y2 = self.transform(*route[i + 1])
+
+                self.canvas.create_line(
+                    x1, y1, x2, y2,
+                    fill=color,
+                    width=2,
+                    dash=(4, 2)
+                )
+
+    # =====================================================================
+    # ========================= RYSOWANIE DRONÓW ==========================
+    # =====================================================================
+    def draw_drones(
+        self,
+        routes: Dict[int, List[Tuple[float, float]]],
+        frame: Dict[int, Tuple[float, float] | None],
+        flight_paths: Dict[int, List[Tuple[float, float]]],
+        last_positions: Dict[int, Tuple[float, float]],
+        colors: List[str]
+    ) -> None:
+        """
+        Aktualizuje i rysuje:
+        - ślad lotu dronów
+        - aktualną pozycję każdego drona
+        Logika zachowuje się jak w oryginalnym draw_frame z app.py.
+        """
+
+        # aktualizacja pozycji i ścieżek
+        for drone_id in routes.keys():
+            current_pos = frame.get(drone_id)
+            if current_pos is not None:
+                last_positions[drone_id] = current_pos
+
+            pos = last_positions.get(drone_id)
+            if pos is None:
+                continue
+
+            flight_paths[drone_id].append(pos)
+
+        # rysowanie śladów lotu
+        for drone_id, path in flight_paths.items():
+            color = colors[drone_id % len(colors)]
+            for i in range(1, len(path)):
+                x1, y1 = self.transform(*path[i - 1])
+                x2, y2 = self.transform(*path[i])
+
+                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=2)
+
+        # rysowanie aktualnej pozycji dronów
+        for drone_id, pos in last_positions.items():
+            x, y = self.transform(*pos)
+            color = colors[drone_id % len(colors)]
+            r = 6
+
+            self.canvas.create_oval(x - r, y - r, x + r, y + r, fill=color)
+            self.canvas.create_text(x + 10, y, text=f"{drone_id}", fill=color)
+
+    # =====================================================================
+    # =========================== LEGENDA =================================
+    # =====================================================================
+    def draw_legend(self, routes: Dict[int, List[Tuple[float, float]]], colors: List[str]) -> None:
+        """Rysuje legendę z kolorami dronów."""
+        legend_x = 20
+        legend_y = 20
+
+        self.canvas.create_text(
+            legend_x,
+            legend_y - 10,
+            text="Legenda dronów:",
+            fill="black",
+            anchor="nw",
+            font=("Arial", 10, "bold")
+        )
+
+        for drone_id in routes.keys():
+            color = colors[drone_id % len(colors)]
+            dy = legend_y + 20 * (drone_id + 1)
+            self.canvas.create_oval(legend_x, dy, legend_x + 10, dy + 10, fill=color)
+            self.canvas.create_text(legend_x + 20, dy + 5, text=f"Dron {drone_id}", anchor="w", fill="black")
+
+    # =====================================================================
+    # ===================== KOMPLETNY FRAME ANIMACJI ======================
+    # =====================================================================
+    def draw_full_frame(
+        self,
+        points: List[Tuple[float, float]],
+        routes: Dict[int, List[Tuple[float, float]]],
+        frame: Dict[int, Tuple[float, float] | None],
+        flight_paths: Dict[int, List[Tuple[float, float]]],
+        last_positions: Dict[int, Tuple[float, float]],
+        colors: List[str]
+    ) -> None:
+        """
+        Rysuje cały ekran:
+        - mapa (punkty)
+        - baza
+        - trasy dronów
+        - ślad lotu i aktualne pozycje
+        - legendę
+        """
+        self.canvas.delete("all")
+
+        if points:
+            self.draw_map_points(points)
+        self.draw_base()
+
+        if routes:
+            self.draw_routes(routes, colors)
+            self.draw_drones(routes, frame, flight_paths, last_positions, colors)
+            self.draw_legend(routes, colors)
