@@ -62,8 +62,8 @@ def proportional_allocate(points, drone_configs):
             idx += 1
 
     # 5. każdy dron wraca do bazy
-    for d in routes:
-        routes[d].append((0.0, 0.0))
+    # for d in routes:
+    #     routes[d].append((0.0, 0.0))
 
     return routes
 
@@ -107,8 +107,8 @@ def allocate_best_fit(points: List[Point], drone_configs: Dict[int, Dict]) -> Di
 
         routes[best_drone].append(p)
 
-    for d in routes:
-        routes[d].append((0.0, 0.0))
+    # for d in routes:
+    #     routes[d].append((0.0, 0.0))
 
     return routes
 
@@ -121,7 +121,7 @@ def allocate_tasks_equally(points: List[Point], num_drones: int) -> Dict[int, Li
     return allocation
 
 def allocate_tasks_kmeans(points: List[Point], num_drones: int) -> Dict[int, List[Point]]:
-    """Podział punktów na podstawie klasteryzacji KMeans (jeśli dostępne)."""
+    """Podział punktów na podstawie klasteryzacji KMeans"""
     if not SKLEARN_AVAILABLE:
         raise ImportError("scikit-learn nie jest zainstalowany. Zainstaluj pakiet sklearn, aby korzystać z KMeans.")
 

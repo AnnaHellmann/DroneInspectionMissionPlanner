@@ -16,6 +16,30 @@ class Simulator:
         self.speed = speed
         self.timestep = timestep
 
+    def simulate(self):
+        """
+        Generator zwracający w każdej klatce:
+        {drone_id: (x, y) albo None}
+        """
+        trajectories = self._build_trajectories()
+
+        if not trajectories:
+            return
+
+        max_len = max(len(traj) for traj in trajectories.values())
+
+        for step in range(max_len):
+            positions = {}
+
+            for drone_id, traj in trajectories.items():
+                if step < len(traj):
+                    positions[drone_id] = traj[step]
+                else:
+                    positions[drone_id] = None
+
+            yield positions
+            time.sleep(self.timestep)
+
     def _build_trajectories(self):
         """
         Dla każdej trasy buduje listę kolejnych punktów pośrednich,
@@ -63,26 +87,4 @@ class Simulator:
 
         return trajectories
 
-    def simulate(self):
-        """
-        Generator zwracający w każdej klatce:
-        {drone_id: (x, y) albo None}
-        """
-        trajectories = self._build_trajectories()
 
-        if not trajectories:
-            return
-
-        max_len = max(len(traj) for traj in trajectories.values())
-
-        for step in range(max_len):
-            positions = {}
-
-            for drone_id, traj in trajectories.items():
-                if step < len(traj):
-                    positions[drone_id] = traj[step]
-                else:
-                    positions[drone_id] = None
-
-            yield positions
-            time.sleep(self.timestep)
