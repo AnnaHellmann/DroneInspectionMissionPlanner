@@ -10,6 +10,8 @@ from visualizer import Visualizer
 import config
 from config import DEFAULT_DRONE_COUNT
 from config import DEFAULT_TSP_METHODS
+from ui.map_info_window import MapInfoWindow
+
 
 class DroneApp(tk.Tk):
     def __init__(self):
@@ -206,70 +208,11 @@ class DroneApp(tk.Tk):
         )
 
     def show_map_info(self):
-        """Wyświetla okno z informacjami o aktualnie wybranej mapie."""
-        map_name = self.map_choice.get()
-        points = self.map_generator.get_points(map_name)
-
-        if not points:
-            messagebox.showinfo("Informacja", "Brak punktów dla tej mapy.")
-            return
-
-        num_points = len(points)
-
-        # oblicz dystanse między wszystkimi punktami
-        dists = []
-        from utils import euclidean_distance
-        for i in range(len(points)):
-            for j in range(i + 1, len(points)):
-                dists.append(euclidean_distance(points[i], points[j]))
-
-        max_dist = max(dists) if dists else 0
-        min_dist = min(dists) if dists else 0
-        avg_dist = sum(dists) / len(dists) if dists else 0
-
-        info_win = tk.Toplevel(self)
-        info_win.title(f"Specyfikacja mapy: {map_name}")
-        info_win.geometry("420x480")
-        info_win.resizable(False, False)
-
-        tk.Label(info_win, text=f"Mapa: {map_name}", font=("Arial", 12, "bold")).pack(pady=10)
-
-        xs = [p[0] for p in points]
-        ys = [p[1] for p in points]
-
-        min_x, max_x = min(xs), max(xs)
-        min_y, max_y = min(ys), max(ys)
-
-        width = max_x - min_x
-        height = max_y - min_y
-
-        text = (
-            f"Liczba punktów: {num_points}\n"
-            f"Wymiary mapy (szer. × wys.): {width:.2f}m × {height:.2f}m\n"
-            f"Minimalny dystans: {min_dist:.2f}m\n"
-            f"Maksymalny dystans: {max_dist:.2f}m\n"
-            f"Średni dystans: {avg_dist:.2f}m\n"
-            "\nPunkty (x, y):\n"
+        MapInfoWindow.show(
+            parent=self,
+            map_name=self.map_choice.get(),
+            points=self.map_generator.get_points(self.map_choice.get())
         )
-
-        frame = tk.Frame(info_win)
-        frame.pack(fill="both", expand=True)
-
-        text_box = tk.Text(frame, wrap="word", height=18)
-        scrollbar = ttk.Scrollbar(frame, command=text_box.yview)
-        text_box.configure(yscrollcommand=scrollbar.set)
-
-        text_box.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
-
-        text_box.insert("end", text)
-
-        for p in points:
-            text_box.insert("end", f"{p}\n")
-
-        text_box.config(state="disabled")
-
-        ttk.Button(info_win, text="Zamknij", command=info_win.destroy).pack(pady=10)
 
     # ========= DRONY =========
     def update_drone_sections(self, event=None):
