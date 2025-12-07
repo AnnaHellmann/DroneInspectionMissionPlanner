@@ -6,15 +6,20 @@ import math
 
 
 class Simulator:
-    def __init__(self, paths, speed=40.0, timestep=0.05):
+
+    def __init__(self, paths, drone_configs, timestep=0.05):
         """
-        paths: {drone_id: [(x1,y1), (x2,y2), ...]} – SPŁASZCZONE trasy!
-        speed: jednostki/sekunda
-        timestep: czas między klatkami (s)
+        paths: {drone_id: [(x1,y1), (x2,y2), ...]}
+        drone_configs: {drone_id: {"speed": ...}}
         """
         self.paths = paths
-        self.speed = speed
+        self.drone_configs = drone_configs
         self.timestep = timestep
+
+        self.drone_speeds = {
+            drone_id: drone_configs[drone_id]["speed"]
+            for drone_id in paths.keys()
+        }
 
     def simulate(self):
         """
@@ -73,7 +78,8 @@ class Simulator:
                     continue
 
                 # ile kroków na tym odcinku
-                steps = max(1, int(dist / (self.speed * self.timestep)))
+                speed = self.drone_speeds[drone_id]
+                steps = max(1, int(dist / (speed * self.timestep)))
 
                 for s in range(steps):
                     t = s / steps

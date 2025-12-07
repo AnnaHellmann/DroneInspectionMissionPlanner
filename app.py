@@ -118,7 +118,8 @@ class DroneApp(tk.Tk):
             messagebox.showerror("Błąd", "Najpierw wybierz mapę!")
             return
 
-        self.sim = Simulator(self.optimized_routes, speed=40.0, timestep=0.05)
+        self.sim = Simulator(self.optimized_routes, self.drone_manager.get_configs(), timestep=0.05)
+
         self.sim_gen = self.sim.simulate()
 
         self.flight_paths = {d: [] for d in self.optimized_routes.keys()}
