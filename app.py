@@ -8,9 +8,10 @@ from optimizer import Optimizer
 from simulator import Simulator
 from visualizer import Visualizer
 import config
-from config import DEFAULT_DRONE_COUNT
-from config import DEFAULT_TSP_METHODS
+from config import DEFAULT_DRONE_COUNT, DEFAULT_TSP_METHODS
+
 from ui.map_info_window import MapInfoWindow
+from ui.drone_manager import DroneManager
 
 
 class DroneApp(tk.Tk):
@@ -38,16 +39,19 @@ class DroneApp(tk.Tk):
 
         self.drone_models = config.DRONE_MODELS
 
-        # główny layout
+        # layout
         self.sidebar = tk.Frame(self, width=320, bg="#e0e0e0", padx=10, pady=10)
         self.sidebar.pack(side="left", fill="y")
 
         self.main_area = tk.Frame(self, bg="white", relief="sunken", bd=2)
         self.main_area.pack(side="right", expand=True, fill="both", padx=10, pady=10)
 
-        self.drone_frames = []
         self.create_sidebar_widgets()
         self.create_main_canvas()
+
+        # inicjalizacja DroneManager
+        self.drone_manager = DroneManager(self.drones_section, self.drone_models)
+        self.drone_manager.build_forms(int(self.drone_count.get()))
 
     # ========= SIDEBAR =========
     def create_sidebar_widgets(self):
@@ -59,7 +63,10 @@ class DroneApp(tk.Tk):
         self.drone_count = ttk.Combobox(self.sidebar, values=DEFAULT_DRONE_COUNT, state="readonly")
         self.drone_count.current(0)
         self.drone_count.pack(fill="x", pady=5)
-        self.drone_count.bind("<<ComboboxSelected>>", self.update_drone_sections)
+        self.drone_count.bind(
+            "<<ComboboxSelected>>",
+            lambda e: self.drone_manager.build_forms(int(self.drone_count.get()))
+        )
 
         # wybór mapy
         tk.Label(self.sidebar, text="Mapa obszaru:", bg="#e0e0e0").pack(anchor="w", pady=(10, 0))
@@ -68,23 +75,18 @@ class DroneApp(tk.Tk):
         self.map_choice.pack(fill="x", pady=5)
         self.map_choice.bind("<<ComboboxSelected>>", self.show_selected_map)
 
-        ttk.Button(self.sidebar, text="Informacje o mapie", command=self.show_map_info) \
+        ttk.Button(self.sidebar, text="Informacje o mapie", command=self.show_map_info)\
             .pack(fill="x", pady=(5, 10))
 
-        # Wybór metody TSP
-        tk.Label(self.sidebar, text="Algorytm optymalizacji TSP:", bg="#e0e0e0").pack(anchor="w", pady=(10, 0))
-
-        self.tsp_method = ttk.Combobox(
-            self.sidebar,
-            values=DEFAULT_TSP_METHODS,
-            state="readonly"
-        )
-        self.tsp_method.current(0)  # default = GA
+        # TSP method
+        tk.Label(self.sidebar, text="Algorytm TSP:", bg="#e0e0e0").pack(anchor="w", pady=(10, 0))
+        self.tsp_method = ttk.Combobox(self.sidebar, values=DEFAULT_TSP_METHODS, state="readonly")
+        self.tsp_method.current(0)
         self.tsp_method.pack(fill="x", pady=5)
 
         ttk.Separator(self.sidebar, orient="horizontal").pack(fill="x", pady=10)
 
-        # PRZEWIJANA SEKCJA DRONÓW
+        # Scroll area for drones
         self.scroll_canvas = tk.Canvas(self.sidebar, bg="#e0e0e0", highlightthickness=0)
         self.scrollbar = ttk.Scrollbar(self.sidebar, orient="vertical", command=self.scroll_canvas.yview)
         self.scrollable_frame = tk.Frame(self.scroll_canvas, bg="#e0e0e0")
@@ -100,35 +102,29 @@ class DroneApp(tk.Tk):
         self.scrollbar.pack(side="right", fill="y")
 
         self.drones_section = self.scrollable_frame
+
         self.scroll_canvas.bind("<Enter>", self._bind_mousewheel)
         self.scroll_canvas.bind("<Leave>", self._unbind_mousewheel)
 
-        # PRZYCISKI
-        ttk.Button(self.sidebar, text="Wyznacz harmonogram", command=self.calculate_schedule) \
+        # przyciski
+        ttk.Button(self.sidebar, text="Wyznacz harmonogram", command=self.calculate_schedule)\
             .pack(fill="x", pady=(15, 5))
-
-        ttk.Button(self.sidebar, text="Symuluj loty", command=self.run_simulation) \
-            .pack(fill="x", pady=(0, 10))
-
-        ttk.Button(self.sidebar, text="Reset", command=self.reset_app) \
-            .pack(fill="x", pady=(0, 10))
-
-        self.update_drone_sections()
+        ttk.Button(self.sidebar, text="Symuluj loty", command=self.run_simulation)\
+            .pack(fill="x", pady=10)
+        ttk.Button(self.sidebar, text="Reset", command=self.reset_app)\
+            .pack(fill="x")
 
     # ========= CANVAS =========
     def create_main_canvas(self):
         self.canvas = tk.Canvas(self.main_area, bg="#fafafa")
         self.canvas.pack(expand=True, fill="both")
-        self.canvas.create_text(500, 300, text="Wybierz mapę, aby zobaczyć punkty inspekcji",
+        self.canvas.create_text(500, 300, text="Wybierz mapę",
                                 font=("Arial", 14), fill="#666")
-
-        # tu tworzymy Visualizer
         self.visualizer = Visualizer(self.canvas)
 
-    # ========= SYMULACJA =========
+    # ========= SIMULATION =========
     def run_simulation(self):
-        print("RUN SIMULATION START")
-        if not hasattr(self, "optimized_routes") or len(self.optimized_routes) == 0:
+        if not hasattr(self, "optimized_routes"):
             messagebox.showerror("Błąd", "Najpierw wyznacz trasy!")
             return
 
@@ -136,21 +132,19 @@ class DroneApp(tk.Tk):
             messagebox.showerror("Błąd", "Najpierw wybierz mapę!")
             return
 
-        # utwórz symulator i generator klatek
         self.sim = Simulator(self.optimized_routes, speed=40.0, timestep=0.05)
         self.sim_gen = self.sim.simulate()
 
-        self.flight_paths = {drone_id: [] for drone_id in self.optimized_routes.keys()}
+        self.flight_paths = {d: [] for d in self.optimized_routes.keys()}
         self.last_positions = {}
 
         self.animate()
-        print(self.optimized_routes)
 
     def animate(self):
         try:
             frame = next(self.sim_gen)
-
             points = getattr(self, "current_points", [])
+
             self.visualizer.draw_full_frame(
                 points,
                 self.optimized_routes,
@@ -164,15 +158,12 @@ class DroneApp(tk.Tk):
         except StopIteration:
             print("Symulacja zakończona.")
 
-    # ======== RESET =========
+    # ========= RESET =========
     def reset_app(self):
-        # zatrzymaj animację (prosta flaga – animacja i tak kończy się po StopIteration)
         if hasattr(self, "sim_gen"):
             del self.sim_gen
-
         if hasattr(self, "sim"):
             del self.sim
-
         if hasattr(self, "optimized_routes"):
             del self.optimized_routes
 
@@ -180,31 +171,28 @@ class DroneApp(tk.Tk):
         self.last_positions = {}
 
         self.canvas.delete("all")
-        self.canvas.create_text(500, 300, text="Zresetowano ustawienia.",
+        self.canvas.create_text(500, 300, text="Zresetowano.",
                                 font=("Arial", 14), fill="#333")
 
-        if hasattr(self, "current_points"):
-            del self.current_points
-
-    # ========= MAPY =========
+    # ========= MAP INFO =========
     def show_selected_map(self, event=None):
         map_name = self.map_choice.get()
         points = self.map_generator.get_points(map_name)
 
         self.current_points = points
 
-        # przelicz skalowanie i narysuj mapę + bazę
         self.visualizer.compute_scaling(points)
         self.visualizer.draw_map_points(points)
         self.visualizer.draw_base()
 
-        # tytuł na górze canvasu
-        canvas_w = self.canvas.winfo_width()
+        self.canvas.delete("title")
         self.canvas.create_text(
-            canvas_w // 2, 30,
+            self.canvas.winfo_width() // 2,
+            30,
             text=f"Punkty inspekcji - {map_name}",
             font=("Arial", 13, "bold"),
-            fill="#333"
+            fill="#333",
+            tags="title"
         )
 
     def show_map_info(self):
@@ -214,100 +202,28 @@ class DroneApp(tk.Tk):
             points=self.map_generator.get_points(self.map_choice.get())
         )
 
-    # ========= DRONY =========
-    def update_drone_sections(self, event=None):
-        for frame in self.drone_frames:
-            frame.destroy()
-        self.drone_frames.clear()
-
-        num_drones = int(self.drone_count.get())
-        for i in range(num_drones):
-            frame = tk.LabelFrame(self.drones_section, text=f"Dron {i + 1}", bg="#f0f0f0", padx=5, pady=5)
-            frame.pack(fill="x", pady=5)
-            self.drone_frames.append(frame)
-
-            tk.Label(frame, text="Model:", bg="#f0f0f0").grid(row=0, column=0, sticky="w")
-            model_combo = ttk.Combobox(frame, values=list(self.drone_models.keys()), state="readonly", width=10)
-            model_combo.grid(row=0, column=1, sticky="w", padx=5)
-            model_combo.current(0)
-
-            entries = {}
-            row_index = 1
-            for param, val in self.drone_models["Model"].items():
-                tk.Label(frame, text=f"{param}:", bg="#f0f0f0").grid(row=row_index, column=0, sticky="w")
-                entry = ttk.Entry(frame, width=10)
-                entry.insert(0, val)
-                entry.grid(row=row_index, column=1, padx=5, pady=2)
-                entries[param] = entry
-                row_index += 1
-
-            frame.entries = entries
-
-            def update_params(event=None, combo=model_combo, entry_dict=entries):
-                model = combo.get()
-                defaults = self.drone_models[model]
-                for param, entry in entry_dict.items():
-                    entry.delete(0, tk.END)
-                    entry.insert(0, defaults[param])
-
-            model_combo.bind("<<ComboboxSelected>>", update_params)
-
     # ========= OBLICZENIA =========
     def calculate_schedule(self):
-        drones = int(self.drone_count.get())
         map_sel = self.map_choice.get()
         points = self.map_generator.get_points(map_sel)
 
         if not points:
-            messagebox.showerror("Błąd", "Brak punktów dla wybranej mapy.")
+            messagebox.showerror("Błąd", "Brak punktów dla tej mapy.")
             return
 
-        drone_configs = {}
+        drone_configs = self.drone_manager.get_configs()
+        if drone_configs is None:
+            return
 
-        for i, frame in enumerate(self.drone_frames):
-            entries = frame.entries
+        method = self.tsp_method.get().lower()
+        optimizer = Optimizer(drone_configs, tsp_method=method)
 
-            try:
-                range_val = float(entries["Zasięg [m]"].get())
-                flight_time_val = float(entries["Czas lotu [s]"].get())
-                battery_val = float(entries["Pojemność baterii [mAh]"].get())
-            except ValueError:
-                messagebox.showerror(
-                    "Błąd parametrów",
-                    f"Dron {i + 1} ma niepoprawne dane (nie liczby)."
-                )
-                return
-
-            if range_val <= 0 or flight_time_val <= 0 or battery_val <= 0:
-                messagebox.showerror(
-                    "Błąd parametrów",
-                    f"Dron {i + 1} ma niepoprawne parametry (0 lub mniej)."
-                )
-                return
-
-            drone_configs[i] = {
-                "range": range_val,
-                "flight_time": flight_time_val,
-                "battery": battery_val,
-            }
-
-        selected_method = self.tsp_method.get().lower()  # "ga" lub "pso"
-        optimizer = Optimizer(drone_configs, tsp_method=selected_method)
-
-        optimized_routes, exec_time = optimizer.optimize(points, drones)
+        optimized_routes, exec_time = optimizer.optimize(points, len(drone_configs))
 
         if optimized_routes is None:
             messagebox.showerror(
                 "Błąd",
-                "Parametry dronów są niewystarczające do wykonania misji.\n\n"
-                "Zwiększ parametry lub zmień liczbę dronów."
-            )
-            return
-
-        if not optimized_routes or len(optimized_routes) == 0:
-            messagebox.showerror(
-                "Błąd",
-                "Nie udało się wyznaczyć tras dla dronów."
+                "Parametry dronów niewystarczające do wykonania misji."
             )
             return
 
@@ -315,11 +231,8 @@ class DroneApp(tk.Tk):
 
         messagebox.showinfo(
             "Harmonogram",
-            f"Trasy wyznaczone pomyślnie.\n\n"
-            f"Czas optymalizacji: {exec_time:.3f} s"
+            f"Trasy wyznaczone.\nCzas optymalizacji: {exec_time:.3f}s"
         )
-
-        print(self.optimized_routes)
 
     # ========= SCROLL =========
     def _bind_mousewheel(self, event):
@@ -334,9 +247,9 @@ class DroneApp(tk.Tk):
 
     def _on_mousewheel(self, event):
         if self.system_os == "Darwin":
-            self.scroll_canvas.yview_scroll(-1 * int(event.delta), "units")
+            self.scroll_canvas.yview_scroll(-1 * event.delta, "units")
         else:
-            self.scroll_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+            self.scroll_canvas.yview_scroll(int(-event.delta / 120), "units")
 
     def _on_mousewheel_linux(self, event):
         if event.num == 4:
