@@ -25,10 +25,8 @@ class TSPSolver:
         n = len(points)
         dist = [[0.0] * n for _ in range(n)]
         for i in range(n):
-            x1, y1 = points[i]
             for j in range(n):
-                x2, y2 = points[j]
-                dist[i][j] = math.hypot(x1 - x2, y1 - y2)
+                dist[i][j] = euclidean_distance(points[i], points[j])
         return dist
 
     def route_length(self, route: List[int], dist_matrix, points: List[Point]) -> float:
@@ -38,7 +36,7 @@ class TSPSolver:
         """
         # baza -> pierwszy punkt
         first = route[0]
-        cost = math.dist(BASE, points[first])
+        cost = euclidean_distance(BASE, points[first])
 
         # punkty między sobą
         for i in range(len(route) - 1):
@@ -48,7 +46,7 @@ class TSPSolver:
 
         # ostatni punkt -> baza
         last = route[-1]
-        cost += math.dist(points[last], BASE)
+        cost += euclidean_distance(points[last], BASE)
 
         return cost
 
@@ -296,11 +294,7 @@ class TSPSolver:
     #  ROZWIĄZYWANIE TSP DLA WIELU DRONÓW
     # -------------------------------------------------------
 
-    def solve_for_drones(
-        self,
-        task_allocation: Dict[int, List[Point]],
-        **params
-    ) -> Dict[int, Dict]:
+    def solve_for_drones(self, task_allocation: Dict[int, List[Point]], **params) -> Dict[int, Dict]:
         """
         Uruchamia wybraną metodę TSP (GA lub PSO) dla każdego drona.
         Zwraca dict:
@@ -318,8 +312,6 @@ class TSPSolver:
 
         for drone_id, points in task_allocation.items():
 
-            # 1) Filtr bezpieczeństwa: wyrzucamy bazę z listy punktów inspekcyjnych,
-            #    nawet jeśli TaskAllocator przypadkiem ją tam dodał.
             filtered_points = [p for p in points if p != BASE]
 
             if len(filtered_points) == 0:
@@ -354,8 +346,7 @@ class TSPSolver:
                 order, cost, history, duration = self.solve_ga(filtered_points, **config.GA_PARAMS)
 
             elif self.method == "pso":
-                # PSO jeszcze niezaimplementowane, placeholder
-                order, cost, duration = self.solve_pso(filtered_points, **config.GA_PARAMS)
+                order, cost, duration = self.solve_pso(filtered_points, **config.PSO_PARAMS)
 
             else:
                 raise ValueError(f"Nieznana metoda TSP: {self.method}")
