@@ -19,6 +19,8 @@ class TSPSolver:
     def __init__(self, method):
 
         self.method = method.lower()
+        self.drone_configs = None
+        self.current_drone_config = None
 
     def compute_distance_matrix(self, points: List[Point]):
         """Buduje macierz odległości Euklidesowych między punktami."""
@@ -29,26 +31,25 @@ class TSPSolver:
                 dist[i][j] = euclidean_distance(points[i], points[j])
         return dist
 
-    def route_length(self, route: List[int], dist_matrix, points: List[Point]) -> float:
+    def route_length(self, order, dist, points):
         """
-        Liczy koszt trasy:
-        BASE -> pierwszy punkt -> ... -> ostatni punkt -> BASE
+        Liczy koszt trasy jako koszt energetyczny E_total zamiast długości geometrycznej.
         """
-        # baza -> pierwszy punkt
-        first = route[0]
-        cost = euclidean_distance(BASE, points[first])
+        # Zamiana permutacji na pełną listę punktów (z bazą)
+        BASE = (0.0, 0.0)
+        route_coords = [BASE] + [points[i] for i in order] + [BASE]
 
-        # punkty między sobą
-        for i in range(len(route) - 1):
-            a = route[i]
-            b = route[i + 1]
-            cost += dist_matrix[a][b]
+        # Pobranie parametrów drona (są przechowywane w solverze)
+        drone_config = self.current_drone_config
 
-        # ostatni punkt -> baza
-        last = route[-1]
-        cost += euclidean_distance(points[last], BASE)
+        # Oblicz zużycie energii
+        E = self.compute_energy_cost(drone_config, route_coords)
 
-        return cost
+        # Constraint energetyczny – maks 80% baterii
+        if E > 0.8 * drone_config["battery_capacity"]:
+            return 1e12  # kara – trasa niedopuszczalna
+
+        return E  # normalny koszt trasy
 
     # -------------------------------------------------------
     #  GENETIC ALGORITHM (GA)
@@ -102,6 +103,8 @@ class TSPSolver:
         - history: listę najlepszych wyników z kolejnych generacji
         - duration: czas wykonania w sekundach
         """
+
+        self.current_drone_config = params["drone_config"]
 
         pop_size = params.get("pop_size", config.GA_PARAMS["pop_size"])
         generations = params.get("generations", config.GA_PARAMS["generations"])
@@ -166,6 +169,8 @@ class TSPSolver:
         - koszt trasy
         - czas wykonania
         """
+
+        self.current_drone_config = params["drone_config"]
 
         iterations = params.get("iterations", config.PSO_PARAMS["iterations"])
         swarm_size = params.get("swarm_size", config.PSO_PARAMS["swarm_size"])
@@ -294,6 +299,36 @@ class TSPSolver:
     #  ROZWIĄZYWANIE TSP DLA WIELU DRONÓW
     # -------------------------------------------------------
 
+    def compute_energy_cost(self, drone_config, route_coords: List[Point]) -> float:
+        """
+        Oblicza całkowite zużycie energii dla pełnej trasy:
+        BASE -> p1 -> p2 -> ... -> pn -> BASE
+        """
+
+        C = drone_config["battery_capacity"]   # mAh
+        T = drone_config["flight_time"]        # sekundy
+        v = drone_config["speed"]              # m/s
+        ts = drone_config["service_time"]      # czas obsługi punktu
+
+        k = C / T  # stała energetyczna
+
+        total_time = 0.0
+
+        # przejście po współrzędnych
+        for i in range(len(route_coords) - 1):
+            p1 = route_coords[i]
+            p2 = route_coords[i + 1]
+
+            # czas przelotu
+            total_time += euclidean_distance(p1, p2) / v
+
+            # czas obsługi (tylko gdy p2 nie jest bazą)
+            if p2 != BASE:
+                total_time += ts
+
+        return k * total_time
+
+
     def solve_for_drones(self, task_allocation: Dict[int, List[Point]], **params) -> Dict[int, Dict]:
         """
         Uruchamia wybraną metodę TSP (GA lub PSO) dla każdego drona.
@@ -342,11 +377,24 @@ class TSPSolver:
                 continue
 
             # 2) Rozwiązanie TSP
+            # ustaw konfigurację drona dla route_length i compute_energy_cost
+            drone_config = self.drone_configs[drone_id]
+            self.current_drone_config = drone_config
+
+            # 2) Rozwiązanie TSP
             if self.method == "ga":
-                order, cost, history, duration = self.solve_ga(filtered_points, **config.GA_PARAMS)
+                order, cost, history, duration = self.solve_ga(
+                    filtered_points,
+                    drone_config=drone_config,
+                    **config.GA_PARAMS
+                )
 
             elif self.method == "pso":
-                order, cost, duration = self.solve_pso(filtered_points, **config.PSO_PARAMS)
+                order, cost, duration = self.solve_pso(
+                    filtered_points,
+                    drone_config=drone_config,
+                    **config.PSO_PARAMS
+                )
 
             else:
                 raise ValueError(f"Nieznana metoda TSP: {self.method}")

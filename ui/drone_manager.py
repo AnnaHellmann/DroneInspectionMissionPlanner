@@ -13,7 +13,9 @@ class DroneManager:
     KEY_MAP = {
         "Zasięg [m]": "range",
         "Czas lotu [s]": "flight_time",
-        "Pojemność baterii [mAh]": "battery"
+        "Pojemność baterii [mAh]": "battery_capacity",
+        "Prędkość [m/s]": "speed",
+        "Czas obsługi punktu [s]": "service_time"
     }
 
     def __init__(self, parent_frame, drone_models):

@@ -21,7 +21,7 @@ def proportional_allocate(points, drone_configs):
 
     for d in range(num_drones):
         cfg = drone_configs[d]
-        cap = cfg["range"] + 0.1 * cfg["flight_time"] + 0.1 * cfg["battery"]
+        cap = cfg["range"] + 0.1 * cfg["flight_time"] + 0.1 * cfg["battery_capacity"]
         capacities.append(cap)
 
     total_cap = sum(capacities)

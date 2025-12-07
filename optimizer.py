@@ -2,6 +2,7 @@
 from task_allocator import TaskAllocator
 from tsp_solver import TSPSolver
 from typing import List, Tuple, Dict
+from utils import euclidean_distance
 import time
 
 Point = Tuple[float, float]
@@ -33,6 +34,8 @@ class Optimizer:
 
         if num_drones <= 0:
             return None
+
+        self.solver.drone_configs = self.drone_configs
 
         # --- 1. Alokacja punktów (mTSP → podproblem TSP dla każdego drona)
         task_allocation = self.allocator.allocate(

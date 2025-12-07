@@ -21,29 +21,40 @@ DRONE_MODELS = {
     "Model": {
         "Zasięg [m]": 0,
         "Czas lotu [s]": 0,
-        "Pojemność baterii [mAh]": 0
+        "Pojemność baterii [mAh]": 0,
+        "Prędkość [m/s]": 10,
+        "Czas obsługi punktu [s]": 5
     },
     "DJI Mini 3 Pro": {
         "Zasięg [m]": 18000,
         "Czas lotu [s]": 34 * 60,
-        "Pojemność baterii [mAh]": 2453
+        "Pojemność baterii [mAh]": 2453,
+        "Prędkość [m/s]": 16,
+        "Czas obsługi punktu [s]": 5
     },
     "DJI Air 2S": {
         "Zasięg [m]": 18000,
         "Czas lotu [s]": 31 * 60,
-        "Pojemność baterii [mAh]": 3500
+        "Pojemność baterii [mAh]": 3500,
+        "Prędkość [m/s]": 19,
+        "Czas obsługi punktu [s]": 5
     },
     "DJI Mavic 3": {
         "Zasięg [m]": 30000,
         "Czas lotu [s]": 46 * 60,
-        "Pojemność baterii [mAh]": 5000
+        "Pojemność baterii [mAh]": 5000,
+        "Prędkość [m/s]": 21,
+        "Czas obsługi punktu [s]": 5
     },
     "DJI Matrice 30": {
         "Zasięg [m]": 30000,
         "Czas lotu [s]": 41 * 60,
-        "Pojemność baterii [mAh]": 5880
+        "Pojemność baterii [mAh]": 5880,
+        "Prędkość [m/s]": 23,
+        "Czas obsługi punktu [s]": 5
     }
 }
+
 
 GA_PARAMS = {
     "pop_size": 20,
