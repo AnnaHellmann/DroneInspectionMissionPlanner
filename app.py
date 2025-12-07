@@ -7,7 +7,9 @@ from map_generator import MapGenerator
 from optimizer import Optimizer
 from simulator import Simulator
 from visualizer import Visualizer
-
+import config
+from config import DEFAULT_DRONE_COUNT
+from config import DEFAULT_TSP_METHODS
 
 class DroneApp(tk.Tk):
     def __init__(self):
@@ -15,15 +17,15 @@ class DroneApp(tk.Tk):
 
         self.flight_paths = {}
         self.last_positions = {}
-        self.drone_colors = ["red", "orange", "green", "blue", "purple"]
+        self.drone_colors = config.DRONE_COLORS
 
-        self.tk_setPalette(background="#f4f4f4", foreground="black")
+        self.tk_setPalette(background=config.BACKGROUND_COLOR, foreground="black")
         style = ttk.Style(self)
         style.theme_use('default')
 
         self.title("Symulator Misji Dronów")
         self.geometry("1000x650")
-        self.configure(bg="#f4f4f4")
+        self.configure(bg=config.BACKGROUND_COLOR)
 
         self.system_os = platform.system()
 
@@ -32,33 +34,7 @@ class DroneApp(tk.Tk):
         self.map_generator.create_maps()
         self.map_points = self.map_generator.maps
 
-        self.drone_models = {
-            "Model": {
-                "Zasięg [m]": 0,
-                "Czas lotu [s]": 0,
-                "Pojemność baterii [mAh]": 0
-            },
-            "DJI Mini 3 Pro": {
-                "Zasięg [m]": 18000,  # 18 km
-                "Czas lotu [s]": 34 * 60,  # 34 min
-                "Pojemność baterii [mAh]": 2453
-            },
-            "DJI Air 2S": {
-                "Zasięg [m]": 18000,
-                "Czas lotu [s]": 31 * 60,
-                "Pojemność baterii [mAh]": 3500
-            },
-            "DJI Mavic 3": {
-                "Zasięg [m]": 30000,
-                "Czas lotu [s]": 46 * 60,
-                "Pojemność baterii [mAh]": 5000
-            },
-            "DJI Matrice 30": {
-                "Zasięg [m]": 30000,
-                "Czas lotu [s]": 41 * 60,
-                "Pojemność baterii [mAh]": 5880
-            }
-        }
+        self.drone_models = config.DRONE_MODELS
 
         # główny layout
         self.sidebar = tk.Frame(self, width=320, bg="#e0e0e0", padx=10, pady=10)
@@ -78,7 +54,7 @@ class DroneApp(tk.Tk):
 
         # liczba dronów
         tk.Label(self.sidebar, text="Liczba dronów:", bg="#e0e0e0").pack(anchor="w", pady=(10, 0))
-        self.drone_count = ttk.Combobox(self.sidebar, values=[1, 2, 3, 4, 5], state="readonly")
+        self.drone_count = ttk.Combobox(self.sidebar, values=DEFAULT_DRONE_COUNT, state="readonly")
         self.drone_count.current(0)
         self.drone_count.pack(fill="x", pady=5)
         self.drone_count.bind("<<ComboboxSelected>>", self.update_drone_sections)
@@ -98,7 +74,7 @@ class DroneApp(tk.Tk):
 
         self.tsp_method = ttk.Combobox(
             self.sidebar,
-            values=["GA", "PSO"],
+            values=DEFAULT_TSP_METHODS,
             state="readonly"
         )
         self.tsp_method.current(0)  # default = GA

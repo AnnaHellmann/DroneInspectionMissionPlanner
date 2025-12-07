@@ -4,6 +4,7 @@ from utils import euclidean_distance
 import random
 import math
 import time
+import config
 
 Point = Tuple[float, float]
 BASE: Point = (0.0, 0.0)
@@ -94,15 +95,7 @@ class TSPSolver:
             r[i], r[j] = r[j], r[i]
         return r
 
-    def solve_ga(
-        self,
-        points: List[Point],
-        pop_size: int = 20,  #100
-        generations: int = 50, #300
-        crossover_rate: float = 0.9,
-        mutation_rate: float = 0.1,
-        tournament_k: int = 3,
-    ):
+    def solve_ga(self, points: List[Point], **params):
         """
         Główny algorytm genetyczny do TSP dla jednego drona.
         Zwraca:
@@ -111,6 +104,12 @@ class TSPSolver:
         - history: listę najlepszych wyników z kolejnych generacji
         - duration: czas wykonania w sekundach
         """
+
+        pop_size = params.get("pop_size", config.GA_PARAMS["pop_size"])
+        generations = params.get("generations", config.GA_PARAMS["generations"])
+        crossover_rate = params.get("crossover_rate", config.GA_PARAMS["crossover_rate"])
+        mutation_rate = params.get("mutation_rate", config.GA_PARAMS["mutation_rate"])
+        tournament_k = params.get("tournament_k", config.GA_PARAMS["tournament_k"])
 
         n = len(points)
         if n == 0:
@@ -161,16 +160,7 @@ class TSPSolver:
 
         return best_route, best_cost, history, duration
 
-    def solve_pso(
-            #na podstawie czego dobierac wartosci?
-            self,
-            points: List[Point],
-            iterations: int = 50, #300
-            swarm_size: int = 20, #50
-            w: float = 0.8,  # inertia niewykorzystywana dla pso permutacji
-            c1: float = 1.5,  # cognitive component
-            c2: float = 1.5,  # social component
-    ):
+    def solve_pso(self, points: List[Point], **params):
         """
         PSO dla problemu TSP (wersja z permutacjami).
         Zwraca:
@@ -178,6 +168,11 @@ class TSPSolver:
         - koszt trasy
         - czas wykonania
         """
+
+        iterations = params.get("iterations", config.PSO_PARAMS["iterations"])
+        swarm_size = params.get("swarm_size", config.PSO_PARAMS["swarm_size"])
+        c1 = params.get("c1", config.PSO_PARAMS["c1"])
+        c2 = params.get("c2", config.PSO_PARAMS["c2"])
 
         n = len(points)
         dist = self.compute_distance_matrix(points)
@@ -356,11 +351,11 @@ class TSPSolver:
 
             # 2) Rozwiązanie TSP
             if self.method == "ga":
-                order, cost, history, duration = self.solve_ga(filtered_points, **params)
+                order, cost, history, duration = self.solve_ga(filtered_points, **config.GA_PARAMS)
 
             elif self.method == "pso":
                 # PSO jeszcze niezaimplementowane, placeholder
-                order, cost, duration = self.solve_pso(filtered_points, **params)
+                order, cost, duration = self.solve_pso(filtered_points, **config.GA_PARAMS)
 
             else:
                 raise ValueError(f"Nieznana metoda TSP: {self.method}")
