@@ -12,6 +12,7 @@ from config import DEFAULT_DRONE_COUNT, DEFAULT_TSP_METHODS
 
 from ui.map_info_window import MapInfoWindow
 from ui.drone_manager import DroneManager
+from ui.scroll_frame import ScrollFrame
 
 
 class DroneApp(tk.Tk):
@@ -32,7 +33,7 @@ class DroneApp(tk.Tk):
 
         self.system_os = platform.system()
 
-        # generator map
+        # map generation
         self.map_generator = MapGenerator()
         self.map_generator.create_maps()
         self.map_points = self.map_generator.maps
@@ -49,7 +50,7 @@ class DroneApp(tk.Tk):
         self.create_sidebar_widgets()
         self.create_main_canvas()
 
-        # inicjalizacja DroneManager
+        # initialize DroneManager
         self.drone_manager = DroneManager(self.drones_section, self.drone_models)
         self.drone_manager.build_forms(int(self.drone_count.get()))
 
@@ -75,7 +76,7 @@ class DroneApp(tk.Tk):
         self.map_choice.pack(fill="x", pady=5)
         self.map_choice.bind("<<ComboboxSelected>>", self.show_selected_map)
 
-        ttk.Button(self.sidebar, text="Informacje o mapie", command=self.show_map_info)\
+        ttk.Button(self.sidebar, text="Informacje o mapie", command=self.show_map_info) \
             .pack(fill="x", pady=(5, 10))
 
         # TSP method
@@ -86,32 +87,17 @@ class DroneApp(tk.Tk):
 
         ttk.Separator(self.sidebar, orient="horizontal").pack(fill="x", pady=10)
 
-        # Scroll area for drones
-        self.scroll_canvas = tk.Canvas(self.sidebar, bg="#e0e0e0", highlightthickness=0)
-        self.scrollbar = ttk.Scrollbar(self.sidebar, orient="vertical", command=self.scroll_canvas.yview)
-        self.scrollable_frame = tk.Frame(self.scroll_canvas, bg="#e0e0e0")
-
-        self.scrollable_frame.bind(
-            "<Configure>",
-            lambda e: self.scroll_canvas.configure(scrollregion=self.scroll_canvas.bbox("all"))
-        )
-
-        self.scroll_canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
-        self.scroll_canvas.configure(yscrollcommand=self.scrollbar.set)
-        self.scroll_canvas.pack(side="left", fill="both", expand=True)
-        self.scrollbar.pack(side="right", fill="y")
-
-        self.drones_section = self.scrollable_frame
-
-        self.scroll_canvas.bind("<Enter>", self._bind_mousewheel)
-        self.scroll_canvas.bind("<Leave>", self._unbind_mousewheel)
+        # ===== PRZEWIJANA SEKCJA DRONÓW =====
+        scroll_frame = ScrollFrame(self.sidebar, bg="#e0e0e0")
+        scroll_frame.pack(fill="both", expand=True)
+        self.drones_section = scroll_frame.get_frame()
 
         # przyciski
-        ttk.Button(self.sidebar, text="Wyznacz harmonogram", command=self.calculate_schedule)\
+        ttk.Button(self.sidebar, text="Wyznacz harmonogram", command=self.calculate_schedule) \
             .pack(fill="x", pady=(15, 5))
-        ttk.Button(self.sidebar, text="Symuluj loty", command=self.run_simulation)\
+        ttk.Button(self.sidebar, text="Symuluj loty", command=self.run_simulation) \
             .pack(fill="x", pady=10)
-        ttk.Button(self.sidebar, text="Reset", command=self.reset_app)\
+        ttk.Button(self.sidebar, text="Reset", command=self.reset_app) \
             .pack(fill="x")
 
     # ========= CANVAS =========
@@ -233,29 +219,6 @@ class DroneApp(tk.Tk):
             "Harmonogram",
             f"Trasy wyznaczone.\nCzas optymalizacji: {exec_time:.3f}s"
         )
-
-    # ========= SCROLL =========
-    def _bind_mousewheel(self, event):
-        self.scroll_canvas.bind_all("<MouseWheel>", self._on_mousewheel)
-        self.scroll_canvas.bind_all("<Button-4>", self._on_mousewheel_linux)
-        self.scroll_canvas.bind_all("<Button-5>", self._on_mousewheel_linux)
-
-    def _unbind_mousewheel(self, event):
-        self.scroll_canvas.unbind_all("<MouseWheel>")
-        self.scroll_canvas.unbind_all("<Button-4>")
-        self.scroll_canvas.unbind_all("<Button-5>")
-
-    def _on_mousewheel(self, event):
-        if self.system_os == "Darwin":
-            self.scroll_canvas.yview_scroll(-1 * event.delta, "units")
-        else:
-            self.scroll_canvas.yview_scroll(int(-event.delta / 120), "units")
-
-    def _on_mousewheel_linux(self, event):
-        if event.num == 4:
-            self.scroll_canvas.yview_scroll(-1, "units")
-        elif event.num == 5:
-            self.scroll_canvas.yview_scroll(1, "units")
 
 
 if __name__ == "__main__":
