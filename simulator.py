@@ -1,136 +1,115 @@
 # simulator.py
-# symulacja przelotu z rzeczywistym czasem postoju
+# Symulacja z rzeczywistym czasem + przyspieszenie animacji
 
 import time
 import math
 
+BASE = (0.0, 0.0)
+
 
 class Simulator:
-    def __init__(self, paths, drone_configs, timestep=0.05):
+    def __init__(self, paths, drone_configs, timestep=0.05, speedup=50.0):
         """
-        paths: {drone_id: [(x1,y1), (x2,y2), ...]}
+        paths: {drone_id: [(x1,y1), (x2,y2), ...]} - TRASA W METRACH
         drone_configs: {drone_id: {"speed": ..., "service_time": ...}}
+        timestep: odstęp między klatkami animacji [sekundy realne]
+        speedup: ile razy przyspieszamy czas rzeczywisty misji
         """
         self.paths = paths
-        self.drone_configs = drone_configs
+        self.cfg = drone_configs
         self.timestep = timestep
+        self.speedup = speedup
 
-        # prędkość każdego drona
-        self.drone_speeds = {
-            drone_id: drone_configs[drone_id]["speed"]
-            for drone_id in paths.keys()
-        }
+        self.segments = self._build_segments()
 
-        # czas obsługi punktu
-        self.service_times = {
-            drone_id: drone_configs[drone_id]["service_time"]
-            for drone_id in paths.keys()
-        }
+    def _build_segments(self):
+        """Tworzy segmenty dla każdego drona."""
+        segments = {}
+
+        for drone_id, route in self.paths.items():
+            segs = []
+
+            for i in range(len(route) - 1):
+                p1 = tuple(route[i])
+                p2 = tuple(route[i + 1])
+                is_stop = (p2 != BASE)
+                segs.append((p1, p2, is_stop))
+
+            segments[drone_id] = segs
+
+        return segments
 
     def simulate(self):
         """
-        Generator zwracający w każdej klatce:
-        {drone_id: (x, y) albo None}
-
-        Postój na punktach jest mierzony realnym czasem systemowym,
-        niezależnie od FPS.
+        Generator zwracający w każdej klatce pozycje dronów.
+        Realny czas liczymy normalnie, ale dzielimy go przez speedup.
         """
-
-        trajectories = self._build_movement_trajectories()
-
-        # indeks ruchu w trajektorii
-        idx = {drone_id: 0 for drone_id in trajectories.keys()}
-
-        # stany dronów
-        state = {drone_id: "move" for drone_id in trajectories.keys()}
-        hover_start = {drone_id: None for drone_id in trajectories.keys()}
+        # Stany dronów
+        state = {d: "move" for d in self.segments}
+        seg_idx = {d: 0 for d in self.segments}
+        progress = {d: 0.0 for d in self.segments}
+        hover_remaining = {d: 0.0 for d in self.segments}
 
         while True:
+
             positions = {}
-            all_finished = True
+            all_done = True
 
-            for drone_id, traj in trajectories.items():
+            # Ile realnego czasu mija w jednej klatce animacji?
+            dt_real = self.timestep * self.speedup
 
-                # --- RUCH ---
-                if state[drone_id] == "move":
-                    all_finished = False
+            for drone_id, segs in self.segments.items():
 
-                    # koniec trasy?
-                    if idx[drone_id] >= len(traj):
-                        positions[drone_id] = None
-                        continue
+                cfg = self.cfg[drone_id]
+                speed = cfg["speed"]
+                service = cfg["service_time"]
 
-                    pos, is_inspection_point = traj[idx[drone_id]]
-                    positions[drone_id] = pos
+                if seg_idx[drone_id] >= len(segs):
+                    positions[drone_id] = None
+                    continue
 
-                    # jeśli to punkt inspekcji → wchodzimy w postój
-                    if is_inspection_point:
-                        state[drone_id] = "hover"
-                        hover_start[drone_id] = time.time()
-                    else:
-                        idx[drone_id] += 1
+                all_done = False
+                p1, p2, is_stop = segs[seg_idx[drone_id]]
 
-                # --- POSTÓJ NA PUNKCIE ---
-                elif state[drone_id] == "hover":
-                    all_finished = False
+                # --- POSTÓJ ---
+                if state[drone_id] == "hover":
+                    positions[drone_id] = p2
+                    hover_remaining[drone_id] -= dt_real
 
-                    positions[drone_id] = traj[idx[drone_id]][0]
-
-                    elapsed = time.time() - hover_start[drone_id]
-                    if elapsed >= self.service_times[drone_id]:
-                        # koniec postoju → przechodzimy do następnej klatki ruchu
+                    if hover_remaining[drone_id] <= 0:
                         state[drone_id] = "move"
-                        idx[drone_id] += 1
+                        seg_idx[drone_id] += 1
+                        progress[drone_id] = 0.0
+
+                    continue
+
+                # --- LOT ---
+                dist = math.dist(p1, p2)
+                t_real = dist / speed if speed > 0 else 0.00001
+
+                delta = dt_real / t_real
+                progress[drone_id] += delta
+
+                if progress[drone_id] >= 1.0:
+                    # dotarliśmy do p2
+                    positions[drone_id] = p2
+
+                    if is_stop:
+                        state[drone_id] = "hover"
+                        hover_remaining[drone_id] = service
+                    else:
+                        seg_idx[drone_id] += 1
+                        progress[drone_id] = 0.0
+
+                else:
+                    # interpolacja punktu
+                    t = progress[drone_id]
+                    x = p1[0] + (p2[0] - p1[0]) * t
+                    y = p1[1] + (p2[1] - p1[1]) * t
+                    positions[drone_id] = (x, y)
 
             yield positions
             time.sleep(self.timestep)
 
-            if all_finished:
+            if all_done:
                 return
-
-    def _build_movement_trajectories(self):
-        """
-        Buduje listę punktów ruchu:
-        Zwraca {drone_id: [(pos, is_inspection_point), ...]}
-        """
-
-        trajectories = {}
-
-        for drone_id, route in self.paths.items():
-            traj = []
-
-            if not route or len(route) < 2:
-                trajectories[drone_id] = traj
-                continue
-
-            speed = self.drone_speeds[drone_id]
-
-            for i in range(len(route) - 1):
-                p1 = route[i]
-                p2 = route[i + 1]
-
-                # zamiana na tuple
-                p1 = tuple(p1)
-                p2 = tuple(p2)
-
-                dist = math.dist(p1, p2)
-
-                if dist == 0:
-                    traj.append((p1, True))  # inspekcja
-                    continue
-
-                # ruch między punktami
-                steps = max(1, int(dist / (speed * self.timestep)))
-
-                for s in range(steps):
-                    t = s / steps
-                    x = p1[0] + (p2[0] - p1[0]) * t
-                    y = p1[1] + (p2[1] - p1[1]) * t
-                    traj.append(((x, y), False))
-
-                # p2 = punkt inspekcji
-                traj.append((p2, True))
-
-            trajectories[drone_id] = traj
-
-        return trajectories

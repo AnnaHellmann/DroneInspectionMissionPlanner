@@ -118,7 +118,12 @@ class DroneApp(tk.Tk):
             messagebox.showerror("Błąd", "Najpierw wybierz mapę!")
             return
 
-        self.sim = Simulator(self.optimized_routes, self.drone_manager.get_configs(), timestep=0.05)
+        self.sim = Simulator(
+            self.optimized_routes,
+            self.drone_configs,
+            timestep=0.05,
+            speedup=50.0  # możesz zmieniać
+        )
 
         self.sim_gen = self.sim.simulate()
 
@@ -191,6 +196,7 @@ class DroneApp(tk.Tk):
 
     # ========= OBLICZENIA =========
     def calculate_schedule(self):
+
         map_sel = self.map_choice.get()
         points = self.map_generator.get_points(map_sel)
 
@@ -199,6 +205,8 @@ class DroneApp(tk.Tk):
             return
 
         drone_configs = self.drone_manager.get_configs()
+        self.drone_configs = drone_configs
+
         if drone_configs is None:
             return
 
