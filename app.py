@@ -158,9 +158,13 @@ class DroneApp(tk.Tk):
             del self.sim
         if hasattr(self, "optimized_routes"):
             del self.optimized_routes
+        if hasattr(self, "current_points"):
+            del self.current_points
 
         self.flight_paths = {}
         self.last_positions = {}
+
+        self.map_choice.set("")
 
         self.canvas.delete("all")
         self.canvas.create_text(500, 300, text="Zresetowano.",
@@ -196,6 +200,9 @@ class DroneApp(tk.Tk):
 
     # ========= OBLICZENIA =========
     def calculate_schedule(self):
+        if not hasattr(self, "current_points"):
+            messagebox.showerror("Błąd", "Najpierw wybierz mapę!")
+            return
 
         map_sel = self.map_choice.get()
         points = self.map_generator.get_points(map_sel)

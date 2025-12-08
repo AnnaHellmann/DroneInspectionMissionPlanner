@@ -25,7 +25,7 @@ class MapGenerator:
         Przyjęto skalę: 1 jednostka = 1 metr.
         """
         self.maps["Mapa 1"] = self.generate_random_points(8, (100, 400), (100, 500))
-        self.maps["Mapa 2"] = self.generate_random_points(40, (1200, 3200), (1200, 3200))
+        self.maps["Mapa 2"] = self.generate_random_points(40, (-12000, 32000), (-12000, 32000))
         self.maps["Mapa 3"] = self.generate_grid_points(3, 5, 100)
 
     def get_points(self, map_name: str) -> List[Tuple[float, float]]:

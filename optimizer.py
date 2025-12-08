@@ -65,8 +65,19 @@ class Optimizer:
                 c2=1.5
             )
 
+        # --- 3. Sprawdzenie, czy wszystkie trasy są energetycznie wykonalne
+        all_feasible = True
+        for drone_id, data in results.items():
+            if not data.get("feasible", True):
+                all_feasible = False
+                print(f"[OPTIMIZER] Dron {drone_id + 1} nie może wykonać swojej trasy – przekroczony limit energii.")
+
         total_time = time.time() - start_time
         print(f"[OPTIMIZER] Całkowity czas optymalizacji ({self.tsp_method.upper()}): {total_time:.3f} s")
+
+        if not all_feasible:
+            # sygnał do app.py, że misja jest niewykonalna
+            return None, total_time
 
         # --- 3. Przekształcenie wyników do formatu używanego w app.py
         optimized_routes = {}

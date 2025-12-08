@@ -346,16 +346,21 @@ class TSPSolver:
         results: Dict[int, Dict] = {}
 
         for drone_id, points in task_allocation.items():
+            drone_config = self.drone_configs[drone_id]
 
             filtered_points = [p for p in points if p != BASE]
 
             if len(filtered_points) == 0:
                 # brak punktów inspekcji - dron tylko siedzi w bazie
                 route_coords = [BASE, BASE]
+                energy = 0.0
+                feasible = True
                 results[drone_id] = {
                     "order": [],
                     "route_coords": route_coords,
                     "cost": 0.0,
+                    "energy": energy,
+                    "feasible": feasible,
                     "time": 0.0,
                 }
                 continue
@@ -364,21 +369,27 @@ class TSPSolver:
                 # tylko jeden punkt: baza -> punkt -> baza, bez GA
                 single = filtered_points[0]
                 route_coords = [BASE, single, BASE]
+
+                energy = self.compute_energy_cost(drone_config, route_coords)
+                feasible = energy <= 0.8 * drone_config["battery_capacity"]
+
                 cost = (
                     math.dist(BASE, single) +
                     math.dist(single, BASE)
                 )
                 results[drone_id] = {
-                    "order": [0],
+                    "order": [],
                     "route_coords": route_coords,
-                    "cost": cost,
+                    "cost": 0.0,
+                    "energy": energy,
+                    "feasible": feasible,
                     "time": 0.0,
                 }
                 continue
 
             # 2) Rozwiązanie TSP
             # ustaw konfigurację drona dla route_length i compute_energy_cost
-            drone_config = self.drone_configs[drone_id]
+
             self.current_drone_config = drone_config
 
             # 2) Rozwiązanie TSP
@@ -402,10 +413,15 @@ class TSPSolver:
             # 3) Konwersja permutacji indeksów → współrzędne + baza
             route_coords = [BASE] + [filtered_points[i] for i in order] + [BASE]
 
+            real_energy = self.compute_energy_cost(drone_config, route_coords)
+            feasible = real_energy <= 0.8 * drone_config["battery_capacity"]
+
             results[drone_id] = {
                 "order": order,
                 "route_coords": route_coords,
-                "cost": cost,
+                "cost": cost,          # to, na czym optymalizował GA/PSO
+                "energy": real_energy, # faktyczny E_total
+                "feasible": feasible,
                 "time": duration,
             }
 
