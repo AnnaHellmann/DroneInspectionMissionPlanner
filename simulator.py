@@ -1,23 +1,29 @@
 # simulator.py
-# symulacja przelotu, obliczanie pozycji dronów w czasie
+# symulacja przelotu z rzeczywistym czasem postoju
 
 import time
 import math
 
 
 class Simulator:
-
     def __init__(self, paths, drone_configs, timestep=0.05):
         """
         paths: {drone_id: [(x1,y1), (x2,y2), ...]}
-        drone_configs: {drone_id: {"speed": ...}}
+        drone_configs: {drone_id: {"speed": ..., "service_time": ...}}
         """
         self.paths = paths
         self.drone_configs = drone_configs
         self.timestep = timestep
 
+        # prędkość każdego drona
         self.drone_speeds = {
             drone_id: drone_configs[drone_id]["speed"]
+            for drone_id in paths.keys()
+        }
+
+        # czas obsługi punktu
+        self.service_times = {
+            drone_id: drone_configs[drone_id]["service_time"]
             for drone_id in paths.keys()
         }
 
@@ -25,72 +31,106 @@ class Simulator:
         """
         Generator zwracający w każdej klatce:
         {drone_id: (x, y) albo None}
+
+        Postój na punktach jest mierzony realnym czasem systemowym,
+        niezależnie od FPS.
         """
-        trajectories = self._build_trajectories()
 
-        if not trajectories:
-            return
+        trajectories = self._build_movement_trajectories()
 
-        max_len = max(len(traj) for traj in trajectories.values())
+        # indeks ruchu w trajektorii
+        idx = {drone_id: 0 for drone_id in trajectories.keys()}
 
-        for step in range(max_len):
+        # stany dronów
+        state = {drone_id: "move" for drone_id in trajectories.keys()}
+        hover_start = {drone_id: None for drone_id in trajectories.keys()}
+
+        while True:
             positions = {}
+            all_finished = True
 
             for drone_id, traj in trajectories.items():
-                if step < len(traj):
-                    positions[drone_id] = traj[step]
-                else:
-                    positions[drone_id] = None
+
+                # --- RUCH ---
+                if state[drone_id] == "move":
+                    all_finished = False
+
+                    # koniec trasy?
+                    if idx[drone_id] >= len(traj):
+                        positions[drone_id] = None
+                        continue
+
+                    pos, is_inspection_point = traj[idx[drone_id]]
+                    positions[drone_id] = pos
+
+                    # jeśli to punkt inspekcji → wchodzimy w postój
+                    if is_inspection_point:
+                        state[drone_id] = "hover"
+                        hover_start[drone_id] = time.time()
+                    else:
+                        idx[drone_id] += 1
+
+                # --- POSTÓJ NA PUNKCIE ---
+                elif state[drone_id] == "hover":
+                    all_finished = False
+
+                    positions[drone_id] = traj[idx[drone_id]][0]
+
+                    elapsed = time.time() - hover_start[drone_id]
+                    if elapsed >= self.service_times[drone_id]:
+                        # koniec postoju → przechodzimy do następnej klatki ruchu
+                        state[drone_id] = "move"
+                        idx[drone_id] += 1
 
             yield positions
             time.sleep(self.timestep)
 
-    def _build_trajectories(self):
+            if all_finished:
+                return
+
+    def _build_movement_trajectories(self):
         """
-        Dla każdej trasy buduje listę kolejnych punktów pośrednich,
-        po których będzie poruszał się dron.
+        Buduje listę punktów ruchu:
+        Zwraca {drone_id: [(pos, is_inspection_point), ...]}
         """
+
         trajectories = {}
 
         for drone_id, route in self.paths.items():
             traj = []
 
-            # jeśli trasa ma mniej niż 2 punkty – nic nie robimy
             if not route or len(route) < 2:
                 trajectories[drone_id] = traj
                 continue
+
+            speed = self.drone_speeds[drone_id]
 
             for i in range(len(route) - 1):
                 p1 = route[i]
                 p2 = route[i + 1]
 
-                # upewniamy się, że to tuple (x,y)
-                if isinstance(p1, list):
-                    p1 = tuple(p1)
-                if isinstance(p2, list):
-                    p2 = tuple(p2)
+                # zamiana na tuple
+                p1 = tuple(p1)
+                p2 = tuple(p2)
 
                 dist = math.dist(p1, p2)
 
                 if dist == 0:
-                    # punkt powtórzony – po prostu dodaj raz
-                    traj.append(p1)
+                    traj.append((p1, True))  # inspekcja
                     continue
 
-                # ile kroków na tym odcinku
-                speed = self.drone_speeds[drone_id]
+                # ruch między punktami
                 steps = max(1, int(dist / (speed * self.timestep)))
 
                 for s in range(steps):
                     t = s / steps
                     x = p1[0] + (p2[0] - p1[0]) * t
                     y = p1[1] + (p2[1] - p1[1]) * t
-                    traj.append((x, y))
+                    traj.append(((x, y), False))
 
-            # dodaj ostatni punkt trasy
-            traj.append(route[-1])
+                # p2 = punkt inspekcji
+                traj.append((p2, True))
+
             trajectories[drone_id] = traj
 
         return trajectories
-
-
