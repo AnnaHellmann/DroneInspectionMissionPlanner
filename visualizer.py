@@ -2,6 +2,8 @@
 import tkinter as tk
 from typing import Dict, List, Tuple
 
+from config import DRONE_NAMES
+
 
 class Visualizer:
     """
@@ -108,22 +110,18 @@ class Visualizer:
     # =====================================================================
     # ========================= RYSOWANIE DRONÓW ==========================
     # =====================================================================
+    # =====================================================================
+    # ========================= RYSOWANIE DRONÓW ==========================
+    # =====================================================================
     def draw_drones(
-        self,
-        routes: Dict[int, List[Tuple[float, float]]],
-        frame: Dict[int, Tuple[float, float] | None],
-        flight_paths: Dict[int, List[Tuple[float, float]]],
-        last_positions: Dict[int, Tuple[float, float]],
-        colors: List[str]
+            self,
+            routes: Dict[int, List[Tuple[float, float]]],
+            frame: Dict[int, Tuple[float, float] | None],
+            flight_paths: Dict[int, List[Tuple[float, float]]],
+            last_positions: Dict[int, Tuple[float, float]],
+            colors: List[str]
     ) -> None:
-        """
-        Aktualizuje i rysuje:
-        - ślad lotu dronów
-        - aktualną pozycję każdego drona
-        Logika zachowuje się jak w oryginalnym draw_frame z app.py.
-        """
 
-        # aktualizacja pozycji i ścieżek
         for drone_id in routes.keys():
             current_pos = frame.get(drone_id)
             if current_pos is not None:
@@ -135,29 +133,30 @@ class Visualizer:
 
             flight_paths[drone_id].append(pos)
 
-        # rysowanie śladów lotu
         for drone_id, path in flight_paths.items():
             color = colors[drone_id % len(colors)]
             for i in range(1, len(path)):
                 x1, y1 = self.transform(*path[i - 1])
                 x2, y2 = self.transform(*path[i])
-
                 self.canvas.create_line(x1, y1, x2, y2, fill=color, width=2)
 
-        # rysowanie aktualnej pozycji dronów
         for drone_id, pos in last_positions.items():
             x, y = self.transform(*pos)
             color = colors[drone_id % len(colors)]
             r = 6
-
             self.canvas.create_oval(x - r, y - r, x + r, y + r, fill=color)
             self.canvas.create_text(x + 10, y, text=f"{drone_id}", fill=color)
 
     # =====================================================================
     # =========================== LEGENDA =================================
     # =====================================================================
-    def draw_legend(self, routes: Dict[int, List[Tuple[float, float]]], colors: List[str]) -> None:
-        """Rysuje legendę z kolorami dronów."""
+    def draw_legend(
+            self,
+            routes: Dict[int, List[Tuple[float, float]]],
+            colors: List[str],
+            drone_configs: Dict[int, dict]
+    ) -> None:
+
         legend_x = 20
         legend_y = 20
 
@@ -173,29 +172,33 @@ class Visualizer:
         for drone_id in routes.keys():
             color = colors[drone_id % len(colors)]
             dy = legend_y + 20 * (drone_id + 1)
+
             self.canvas.create_oval(legend_x, dy, legend_x + 10, dy + 10, fill=color)
-            self.canvas.create_text(legend_x + 20, dy + 5, text=f"Dron {drone_id}", anchor="w", fill="black")
+
+            drone_name = drone_configs.get(drone_id, {}).get("name", f"Dron {drone_id}")
+
+            self.canvas.create_text(
+                legend_x + 20,
+                dy + 5,
+                text=drone_name,
+                anchor="w",
+                fill="black"
+            )
 
     # =====================================================================
     # ===================== KOMPLETNY FRAME ANIMACJI ======================
     # =====================================================================
     def draw_full_frame(
-        self,
-        points: List[Tuple[float, float]],
-        routes: Dict[int, List[Tuple[float, float]]],
-        frame: Dict[int, Tuple[float, float] | None],
-        flight_paths: Dict[int, List[Tuple[float, float]]],
-        last_positions: Dict[int, Tuple[float, float]],
-        colors: List[str]
+            self,
+            points: List[Tuple[float, float]],
+            routes: Dict[int, List[Tuple[float, float]]],
+            frame: Dict[int, Tuple[float, float] | None],
+            flight_paths: Dict[int, List[Tuple[float, float]]],
+            last_positions: Dict[int, Tuple[float, float]],
+            colors: List[str],
+            drone_configs: Dict[int, dict]
     ) -> None:
-        """
-        Rysuje cały ekran:
-        - mapa (punkty)
-        - baza
-        - trasy dronów
-        - ślad lotu i aktualne pozycje
-        - legendę
-        """
+
         self.canvas.delete("all")
 
         if points:
@@ -205,4 +208,7 @@ class Visualizer:
         if routes:
             self.draw_routes(routes, colors)
             self.draw_drones(routes, frame, flight_paths, last_positions, colors)
-            self.draw_legend(routes, colors)
+            self.draw_legend(routes, colors, drone_configs)
+
+
+

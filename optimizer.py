@@ -2,29 +2,22 @@
 from task_allocator import TaskAllocator
 from tsp_solver import TSPSolver
 from typing import List, Tuple, Dict
+from config import ALLOC_METHOD
+
 from utils import euclidean_distance
 import time
 
 Point = Tuple[float, float]
 
-
 class Optimizer:
-    """
-    Główna klasa optymalizacji misji.
-    Odpowiada za:
-    1. alokację punktów między drony
-    2. wywołanie metaheurystyki (GA / PSO / NN)
-    """
-
-    def __init__(self, drone_configs: Dict[int, Dict], tsp_method="ga"):
+    def __init__(self, drone_configs, tsp_method):
         self.drone_configs = drone_configs
-        self.tsp_method = tsp_method   # "ga" lub "pso"
+        self.tsp_method = tsp_method
 
-        # domyślna metoda podziału (możesz zmienić na inną)
-        self.allocator = TaskAllocator(method="best_fit")
-
-        # solver tras TSP
+        self.allocator = TaskAllocator(method=ALLOC_METHOD)
         self.solver = TSPSolver(method=tsp_method)
+
+
 
     def optimize(self, points: List[Point], num_drones: int):
         """

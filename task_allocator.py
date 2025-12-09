@@ -1,156 +1,232 @@
-# ---------------------------------------------
-# Task Allocator – inteligentny podział zadań
-# ---------------------------------------------
+# task_allocator.py
+# Ulepszony podział punktów między drony (mTSP)
+
 from typing import List, Tuple, Dict
 from utils import euclidean_distance
 
+# ==========================================
+# Opcjonalny import KMeans
+# ==========================================
+try:
+    from sklearn.cluster import KMeans
+    SKLEARN_AVAILABLE = True
+except ImportError:
+    KMeans = None
+    SKLEARN_AVAILABLE = False
+
 Point = Tuple[float, float]
+BASE = (0.0, 0.0)
 
 
-# ============================================
-#   INTELIGENTNY PODZIAŁ ENERGETYCZNY
-# ============================================
-def energy_based_allocate(points, drone_configs):
+# ==========================================================
+# POMOCNICZE
+# ==========================================================
 
-    BASE = (0.0, 0.0)
-    num_drones = len(drone_configs)
+def route_energy(pts: List[Point], cfg: Dict) -> float:
+    """Liczy energię potrzebną na trasę BASE → pts → BASE."""
+    v = cfg["speed"]
+    ts = cfg["service_time"]
+    C = cfg["battery_capacity"]
+    T = cfg["flight_time"]
+    k = C / T
 
-    # --- Sortowanie dronów od najmocniejszego (największa bateria) ---
-    drone_order = sorted(
-        range(num_drones),
-        key=lambda d: drone_configs[d]["battery_capacity"],
-        reverse=True
-    )
+    route = [BASE] + pts + [BASE]
+    total_t = 0.0
 
-    # Każdy dron zaczyna od bazy
-    routes = {d: [BASE] for d in range(num_drones)}
+    for i in range(len(route) - 1):
+        total_t += euclidean_distance(route[i], route[i + 1]) / v
+        if route[i + 1] != BASE:
+            total_t += ts
 
-    # Sortowanie punktów wg odległości od bazy (typowa heurystyka)
-    points_sorted = sorted(points, key=lambda p: euclidean_distance(BASE, p))
+    return k * total_t
 
-    # -----------------------------
-    #  WSTĘPNY PODZIAŁ GREEDY
-    # -----------------------------
-    for p in points_sorted:
-        best_drone = None
-        best_increase = float("inf")
 
-        for d in drone_order:
-            current = routes[d]
+def energy_ok(pts, cfg) -> bool:
+    """Czy dron jest w stanie wykonać trasę energetycznie?"""
+    return route_energy(pts, cfg) <= 0.8 * cfg["battery_capacity"]
 
-            old_len = route_length(current)
-            new_len = route_length(current + [p])
-            increase = new_len - old_len
 
-            if increase < best_increase:
-                best_increase = increase
-                best_drone = d
+# ==========================================================
+# OPCJA A:
+# Heurystyka z lokalnym ulepszaniem podziału (SWAP + REASSIGN)
+# ==========================================================
 
-        routes[best_drone].append(p)
+def allocate_option_A(points: List[Point], drone_configs: Dict[int, Dict]):
+    """
+    1. Start: proportional best-fit
+    2. Lokalne ulepszanie:
+        • swap punktów między dronami
+        • przerzucanie punktów z przeciążonych do mocniejszych
+    Wynik: bardziej zbalansowany, energo-optymalny podział.
+    """
 
-    # ============================================
-    #   FUNKCJA LICZĄCA ENERGIĘ DLA CAŁEJ TRASY
-    # ============================================
-    def compute_energy(drone_id, points_list):
+    num = len(drone_configs)
+    routes = {d: [] for d in range(num)}
 
-        cfg = drone_configs[drone_id]
-        v = cfg["speed"]
-        ts = cfg["service_time"]
-        C = cfg["battery_capacity"]
-        T = cfg["flight_time"]
+    # --- STARTOWY PODZIAŁ: proportional best-fit ---
+    sorted_points = sorted(points, key=lambda p: (p[0], p[1]))
+    capacities = [
+        cfg["range"] + 0.1 * cfg["flight_time"] + 0.1 * cfg["battery_capacity"]
+        for cfg in drone_configs.values()
+    ]
 
-        k = C / T  # przeliczenie czasu na energię
+    total_cap = sum(capacities)
+    target = [max(1, round(c / total_cap * len(points))) for c in capacities]
 
-        route = [BASE] + points_list + [BASE]
-        t = 0.0
+    # korekta sumy
+    diff = sum(target) - len(points)
+    while diff > 0:
+        i = target.index(max(target))
+        target[i] -= 1
+        diff -= 1
+    while diff < 0:
+        i = target.index(min(target))
+        target[i] += 1
+        diff += 1
 
-        for i in range(len(route) - 1):
-            t += euclidean_distance(route[i], route[i + 1]) / v
-            if route[i + 1] != BASE:
-                t += ts
+    idx = 0
+    for d in range(num):
+        for _ in range(target[d]):
+            routes[d].append(sorted_points[idx])
+            idx += 1
 
-        return k * t
+    # ==============================================
+    # KROK 2: ULEPSZANIE PODZIAŁU (LOCAL SWAPS)
+    # ==============================================
 
-    # ============================================
-    #   ETAP 3 – REDUKCJA TRAS SŁABSZYCH DRONÓW
-    # ============================================
-    changed = True
+    improved = True
+    while improved:
+        improved = False
 
-    while changed:
-        changed = False
+        for d1 in range(num):
+            for d2 in range(num):
+                if d1 == d2:
+                    continue
 
-        for d in range(num_drones):
+                pts1 = routes[d1]
+                pts2 = routes[d2]
 
-            pts = routes[d][1:]  # bez bazy
-            if len(pts) == 0:
-                continue
+                for p in pts1:
+                    # sprawdź czy przerzucenie punktu p z d1 do d2 daje lepszy wynik
+                    new1 = [x for x in pts1 if x != p]
+                    new2 = pts2 + [p]
 
-            E = compute_energy(d, pts)
-            limit = 0.8 * drone_configs[d]["battery_capacity"]
-
-            if E > limit:
-
-                # znajdź NAJDALSZY punkt
-                farthest = max(pts, key=lambda p: euclidean_distance(BASE, p))
-                routes[d].remove(farthest)
-
-                # spróbuj oddać go którykolwiekemu bardziej wydolnemu dronowi
-                reassigned = False
-
-                for strong_id in drone_order:
-                    if strong_id == d:
+                    if not new1:
                         continue
 
-                    new_list = routes[strong_id][1:] + [farthest]
-                    E2 = compute_energy(strong_id, new_list)
+                    E1 = route_energy(new1, drone_configs[d1])
+                    E2 = route_energy(new2, drone_configs[d2])
 
-                    if E2 <= 0.8 * drone_configs[strong_id]["battery_capacity"]:
-                        routes[strong_id].append(farthest)
-                        reassigned = True
-                        break
+                    if E1 <= 0.8*drone_configs[d1]["battery_capacity"] and \
+                       E2 <= 0.8*drone_configs[d2]["battery_capacity"]:
 
-                # jeśli żaden dron nie może przejąć → misja niewykonalna
-                if not reassigned:
-                    raise RuntimeError("ŻADEN DRON nie może przejąć punktu – misja niewykonalna.")
-
-                changed = True
+                        # poprawa: równomierniejsza liczba punktów
+                        if abs(len(new1) - len(new2)) < abs(len(pts1) - len(pts2)):
+                            routes[d1] = new1
+                            routes[d2] = new2
+                            improved = True
+                            break
 
     return routes
 
 
-# ============================================
-#   PROSTA FUNKCJA DYSTANSOWA
-# ============================================
-def route_length(route):
-    if len(route) < 2:
-        return 0.0
-    dist = 0.0
-    for i in range(len(route) - 1):
-        dist += euclidean_distance(route[i], route[i + 1])
-    return dist
+# ==========================================================
+# OPCJA B:
+# KMeans → division → Energy fix
+# ==========================================================
+
+def allocate_option_B(points: List[Point], drone_configs: Dict[int, Dict]):
+    """
+    1. Klasteryzacja KMeans – grupy przestrzenne
+    2. Energy fix – przerzucanie punktów między dronami
+    """
+
+    num = len(drone_configs)
+    if not SKLEARN_AVAILABLE:
+        raise RuntimeError("KMeans wymaga scikit-learn")
+
+    # --- KMEANS ---
+    kmeans = KMeans(n_clusters=num, n_init=10)
+    labels = kmeans.fit_predict(points)
+
+    routes = {d: [] for d in range(num)}
+    for p, lab in zip(points, labels):
+        routes[lab].append(p)
+
+    # --- ENERGY FIX ---
+    changed = True
+    while changed:
+        changed = False
+
+        for d in range(num):
+            pts = routes[d]
+            if not pts:
+                continue
+
+            if not energy_ok(pts, drone_configs[d]):
+                # oddaj najdalszy punkt
+                far = max(pts, key=lambda p: euclidean_distance(BASE, p))
+                routes[d].remove(far)
+
+                # daj mocniejszemu
+                strongest = max(
+                    range(num),
+                    key=lambda idx: drone_configs[idx]["battery_capacity"]
+                )
+                routes[strongest].append(far)
+                changed = True
+
+    return routes
+def allocate_equally(points: List[Point], num_drones: int) -> Dict[int, List[Point]]:
+    import random
+    """
+    Najprostsza metoda podziału zadań:
+    - Każdy dron dostaje prawie tę samą liczbę punktów.
+    - Brak uwzględnienia energii, odległości, mocy drona.
+    - Dobra jako baseline do porównań w pracy inżynierskiej.
+    """
+
+    # potasuj punkty, aby ich kolejność nie wpływała na wynik
+    shuffled = points[:]
+    random.shuffle(shuffled)
+
+    routes = {i: [(0.0, 0.0)] for i in range(num_drones)}
+
+    for idx, point in enumerate(shuffled):
+        drone_id = idx % num_drones
+        routes[drone_id].append(point)
+
+    return routes
 
 
-# ============================================
-#   INNE HEURYSTYKI (pozostawione bez zmian)
-# ============================================
-def allocate_tasks_equally(points: List[Point], num_drones: int) -> Dict[int, List[Point]]:
-    allocation = {i: [] for i in range(num_drones)}
-    for idx, point in enumerate(points):
-        allocation[idx % num_drones].append(point)
-    return allocation
 
+# ==========================================================
+# KLASY GŁÓWNEJ
+# ==========================================================
 
 class TaskAllocator:
-    def __init__(self, method: str = "best_fit"):
+    def __init__(self, method="equally"):
+        """
+        method:
+            • "A" → opcja A (local improvement)
+            • "B" → opcja B (KMeans + energy fix)
+            • "best_fit" → fallback bardzo prosty
+        """
         self.method = method
 
-    def allocate(self, points, num_drones, drone_configs=None):
+    def allocate(self, points, num_drones, drone_configs):
+        if self.method == "A":
+            return allocate_option_A(points, drone_configs)
 
-        if self.method == "best_fit":
-            return energy_based_allocate(points, drone_configs)
+        elif self.method == "B":
+            return allocate_option_B(points, drone_configs)
 
-        elif self.method == "equal":
-            return allocate_tasks_equally(points, num_drones)
+        elif self.method == "equally":
+            return allocate_equally(points, num_drones)
 
         else:
-            raise ValueError(f"Nieznana metoda podziału: {self.method}")
+            # fallback: prosty, ale zawsze działa
+            return {
+                i: points[i::num_drones]
+                for i in range(num_drones)
+            }

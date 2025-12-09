@@ -22,6 +22,7 @@ class DroneApp(tk.Tk):
         self.flight_paths = {}
         self.last_positions = {}
         self.drone_colors = config.DRONE_COLORS
+        self.drone_time = {}
 
         self.tk_setPalette(background=config.BACKGROUND_COLOR, foreground="black")
         style = ttk.Style(self)
@@ -129,6 +130,7 @@ class DroneApp(tk.Tk):
 
         self.flight_paths = {d: [] for d in self.optimized_routes.keys()}
         self.last_positions = {}
+        self.drone_time = {d: 0.0 for d in self.optimized_routes.keys()}
 
         self.animate()
 
@@ -137,18 +139,42 @@ class DroneApp(tk.Tk):
             frame = next(self.sim_gen)
             points = getattr(self, "current_points", [])
 
+            # AKTUALIZACJA CZASU LOTU
+            dt = self.sim.timestep
+            for d, pos in frame.items():
+                if pos is not None:
+                    self.drone_time[d] += dt
+
+            # RYSOWANIE
             self.visualizer.draw_full_frame(
                 points,
                 self.optimized_routes,
                 frame,
                 self.flight_paths,
                 self.last_positions,
-                self.drone_colors
+                self.drone_colors,
+                self.drone_configs
             )
 
             self.after(30, self.animate)
+
         except StopIteration:
+            # === KONIEC SYMULACJI ===
             print("Symulacja zakończona.")
+
+            # BEZPIECZNE POBIERANIE NAZW
+            lines = []
+            for d, t in self.drone_time.items():
+                drone_name = self.drone_configs[d].get("name", f"Dron {d}")
+                lines.append(f"{drone_name}: {t:.2f} s")
+
+            result = "\n".join(lines)
+
+            # PRINT i POPUP
+            print("\nCzas pracy dronów:")
+            print(result)
+
+            messagebox.showinfo("Czas pracy dronów", result)
 
     # ========= RESET =========
     def reset_app(self):
@@ -219,6 +245,7 @@ class DroneApp(tk.Tk):
 
         method = self.tsp_method.get().lower()
         optimizer = Optimizer(drone_configs, tsp_method=method)
+        # optimizer = Optimizer(drone_configs)
 
         optimized_routes, exec_time = optimizer.optimize(points, len(drone_configs))
 

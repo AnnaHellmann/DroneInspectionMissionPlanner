@@ -85,7 +85,28 @@ class Simulator:
 
                 # --- LOT ---
                 dist = math.dist(p1, p2)
+
+                # --------- ZABEZPIECZENIE PRZED ODLEGŁOŚCIĄ ZERO ----------
+                if dist < 1e-6:
+                    # Punkt powtórzony – "natychmiast" jesteśmy w p2
+                    positions[drone_id] = p2
+
+                    if is_stop:
+                        state[drone_id] = "hover"
+                        hover_remaining[drone_id] = service
+                    else:
+                        seg_idx[drone_id] += 1
+                        progress[drone_id] = 0.0
+
+                    continue
+                # -----------------------------------------------------------
+
+                # klasyczny przypadek: odcinek > 0
                 t_real = dist / speed if speed > 0 else 0.00001
+
+                # też zabezpieczamy: jeśli t_real przypadkiem wyszło zero
+                if t_real < 1e-6:
+                    t_real = 0.00001
 
                 delta = dt_real / t_real
                 progress[drone_id] += delta
