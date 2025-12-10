@@ -31,7 +31,6 @@ class Optimizer:
 
         self.solver.drone_configs = self.drone_configs
 
-        #alokacja punktów (mTSP → podproblem TSP dla każdego drona)
         task_allocation = self.allocator.allocate(
             points,
             num_drones,
@@ -79,10 +78,8 @@ class Optimizer:
         for drone_id, pts in task_allocation.items():
             route = results[drone_id]["route_coords"]
 
-            # liczba punktów
             n_points = len(pts)
 
-            # długość trasy
             length = 0
             for i in range(len(route) - 1):
                 length += euclidean_distance(route[i], route[i + 1])

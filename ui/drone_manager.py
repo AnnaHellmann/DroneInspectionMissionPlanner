@@ -5,12 +5,8 @@ from tkinter import ttk, messagebox
 
 
 class DroneManager:
-    """
-    Zarządza sekcją dronów w UI
-    oraz waliduje parametry wejściowe.
-    """
+    """Zarządza sekcją dronów w UI oraz waliduje parametry wejściowe."""
 
-    # Mapa nazw z UI → klucze używane przez algorytmy
     KEY_MAP = {
         "Zasięg [m]": "range",
         "Czas lotu [s]": "flight_time",
@@ -19,13 +15,12 @@ class DroneManager:
         "Czas obsługi punktu [s]": "service_time"
     }
 
-    # Minimalne i maksymalne sensowne wartości
     LIMITS = {
-        "range": (50, 200000),               # m
-        "flight_time": (60, 7200),           # sekundy (1–120 min)
-        "battery_capacity": (500, 30000),    # mAh
-        "speed": (1, 50),                    # m/s (3.6–180 km/h)
-        "service_time": (1, 600)             # sekundy (1–10 min)
+        "range": (50, 200000),
+        "flight_time": (60, 7200),
+        "battery_capacity": (500, 30000),
+        "speed": (1, 50),
+        "service_time": (1, 600)
     }
 
     def __init__(self, parent_frame, drone_models):
@@ -33,9 +28,6 @@ class DroneManager:
         self.drone_models = drone_models
         self.frames = []
 
-    # -------------------------------------------------------
-    #  TWORZENIE FORMULARZY PARAMETRÓW DRONÓW
-    # -------------------------------------------------------
     def build_forms(self, num_drones):
         for frame in self.frames:
             frame.destroy()
@@ -52,7 +44,6 @@ class DroneManager:
             frame.pack(fill="x", pady=5)
             self.frames.append(frame)
 
-            # Wybór modelu
             tk.Label(frame, text="Model:", bg="#f0f0f0").grid(row=0, column=0, sticky="w")
             model_combo = ttk.Combobox(
                 frame,
@@ -70,7 +61,6 @@ class DroneManager:
 
             default_model = self.drone_models[model_combo.get()]
 
-            # Tworzenie pól tekstowych
             for param, val in default_model.items():
                 tk.Label(frame, text=f"{param}:", bg="#f0f0f0").grid(row=row_index, column=0, sticky="w")
                 entry = ttk.Entry(frame, width=12)
@@ -81,7 +71,6 @@ class DroneManager:
 
             frame.entries = entries
 
-            # Zmiana modelu automatycznie zmienia pola
             def update_from_model(event=None, combo=model_combo, entry_dict=entries):
                 new_model = self.drone_models[combo.get()]
                 for param, entry in entry_dict.items():
@@ -90,9 +79,6 @@ class DroneManager:
 
             model_combo.bind("<<ComboboxSelected>>", update_from_model)
 
-    # -------------------------------------------------------
-    #  WALIDACJA I KONWERSJA PARAMETRÓW
-    # -------------------------------------------------------
     def get_configs(self):
         drone_configs = {}
 

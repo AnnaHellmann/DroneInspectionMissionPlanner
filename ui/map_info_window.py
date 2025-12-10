@@ -6,11 +6,7 @@ from utils import euclidean_distance
 
 
 class MapInfoWindow:
-    """
-    Klasa odpowiedzialna wyłącznie za wyświetlanie okna
-    z informacjami o wybranej mapie.
-    Dzięki temu kod w app.py jest zdecydowanie czystszy.
-    """
+    """wyświetlanie okna info"""
 
     @staticmethod
     def show(parent, map_name, points):
@@ -20,7 +16,6 @@ class MapInfoWindow:
 
         num_points = len(points)
 
-        # obliczenia statystyk
         dists = []
         for i in range(len(points)):
             for j in range(i + 1, len(points)):
@@ -39,16 +34,13 @@ class MapInfoWindow:
         width = max_x - min_x
         height = max_y - min_y
 
-        # Tworzenie okna
         win = tk.Toplevel(parent)
         win.title(f"Specyfikacja mapy: {map_name}")
         win.geometry("420x480")
         win.resizable(False, False)
 
-        # Tytuł
         tk.Label(win, text=f"Mapa: {map_name}", font=("Arial", 12, "bold")).pack(pady=10)
 
-        # Tekst główny
         info_text = (
             f"Liczba punktów: {num_points}\n"
             f"Wymiary mapy (szer. × wys.): {width:.2f}m × {height:.2f}m\n"
@@ -58,7 +50,6 @@ class MapInfoWindow:
             "\nPunkty (x, y):\n"
         )
 
-        # Scrollowana ramka
         frame = tk.Frame(win)
         frame.pack(fill="both", expand=True)
 

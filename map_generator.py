@@ -22,7 +22,6 @@ def validate_map(points: List[Tuple[float, float]]):
     if width > 5000 or height > 5000:
         return False, f"Mapa jest zbyt duża ({width:.1f}x{height:.1f} m). Maksymalne wymiary: 5000x5000"
 
-    # Sprawdzenie absurdalnie dużych odległości
     max_dist = 0
     for i in range(len(points)):
         for j in range(i + 1, len(points)):

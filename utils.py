@@ -1,8 +1,7 @@
-#pomocnicze funkcji (np. odległości, wczytywanie danych)
 from typing import List, Tuple
 import math
 
-UNIT_SCALE = 1.0  # 1 jednostka = 1 metr
+UNIT_SCALE = 1.0
 
 Point = Tuple[float, float]
 

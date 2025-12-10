@@ -1,38 +1,25 @@
-# visualizer.py
+#Klasa odpowiedzialna za rysowanie punktów mapy, bazy, tras dronów, animacji lotu dronów, legendy
+
 import tkinter as tk
 from typing import Dict, List, Tuple
 
-from config import DRONE_NAMES
-
 
 class Visualizer:
-    """
-    Klasa odpowiedzialna za rysowanie:
-    - punktów mapy
-    - bazy
-    - tras dronów
-    - animacji lotu dronów
-    - legendy
-    """
+    """rysowanie punktów mapy, bazy, tras dronów, animacji lotu dronów, legendy"""
 
     def __init__(self, canvas: tk.Canvas):
         self.canvas = canvas
 
-        # parametry skalowania
         self.scale = 1.0
         self.offset_x = 0.0
         self.offset_y = 0.0
 
-    # =====================================================================
-    # ======================= SKALOWANIE MAPY ==============================
-    # =====================================================================
     def compute_scaling(self, points: List[Tuple[float, float]]) -> None:
-        """Skaluje i centruje mapę względem rozmiaru Canvas."""
+        """Skalowanie i centrowanie mapy względem rozmiaru Canvas."""
 
         if not points:
             return
 
-        # dodajemy bazę (0,0) do obszaru
         all_points = points + [(0.0, 0.0)]
 
         xs = [p[0] for p in all_points]
@@ -48,16 +35,13 @@ class Visualizer:
         canvas_h = self.canvas.winfo_height()
 
         if canvas_w <= 1 or canvas_h <= 1 or map_w == 0 or map_h == 0:
-            # Canvas może nie być jeszcze zainicjalizowany
             self.canvas.after(50, lambda: self.compute_scaling(points))
             return
 
-        # skalowanie na 90% dostępnej szerokości/wysokości
         scale_w = canvas_w * 0.9 / map_w
         scale_h = canvas_h * 0.9 / map_h
         self.scale = min(scale_w, scale_h)
 
-        # wycentrowanie
         self.offset_x = (canvas_w - map_w * self.scale) / 2 - min_x * self.scale
         self.offset_y = (canvas_h - map_h * self.scale) / 2 - min_y * self.scale
 
@@ -65,16 +49,11 @@ class Visualizer:
         """Konwersja współrzędnych mapy na piksele Canvas."""
         return x * self.scale + self.offset_x, y * self.scale + self.offset_y
 
-    # =====================================================================
-    # ====================== RYSOWANIE MAPY ================================
-    # =====================================================================
     def draw_map_points(self, points: List[Tuple[float, float]]) -> None:
-        """Rysuje punkty inspekcji na mapie."""
         self.canvas.delete("all")
 
         for x, y in points:
             sx, sy = self.transform(x, y)
-            # małe czerwone punkty (jak w show_selected_map)
             self.canvas.create_arc(
                 sx - 5, sy - 5, sx + 5, sy + 5,
                 start=0, extent=359,
@@ -84,16 +63,11 @@ class Visualizer:
             )
 
     def draw_base(self) -> None:
-        """Rysuje bazę dronów w punkcie (0,0)."""
         bx, by = self.transform(0.0, 0.0)
         self.canvas.create_rectangle(bx - 6, by - 6, bx + 6, by + 6, fill="black")
         self.canvas.create_text(bx + 12, by, text="Baza", fill="black", anchor="w")
 
-    # =====================================================================
-    # ===================== RYSOWANIE TRAS TSP ============================
-    # =====================================================================
     def draw_routes(self, routes: Dict[int, List[Tuple[float, float]]], colors: List[str]) -> None:
-        """Rysuje optymalne trasy dla każdego drona."""
         for drone_id, route in routes.items():
             color = colors[drone_id % len(colors)]
             for i in range(len(route) - 1):
@@ -107,12 +81,6 @@ class Visualizer:
                     dash=(4, 2)
                 )
 
-    # =====================================================================
-    # ========================= RYSOWANIE DRONÓW ==========================
-    # =====================================================================
-    # =====================================================================
-    # ========================= RYSOWANIE DRONÓW ==========================
-    # =====================================================================
     def draw_drones(
             self,
             routes: Dict[int, List[Tuple[float, float]]],
@@ -147,9 +115,6 @@ class Visualizer:
             self.canvas.create_oval(x - r, y - r, x + r, y + r, fill=color)
             self.canvas.create_text(x + 10, y, text=f"{drone_id}", fill=color)
 
-    # =====================================================================
-    # =========================== LEGENDA =================================
-    # =====================================================================
     def draw_legend(
             self,
             routes: Dict[int, List[Tuple[float, float]]],
@@ -185,9 +150,6 @@ class Visualizer:
                 fill="black"
             )
 
-    # =====================================================================
-    # ===================== KOMPLETNY FRAME ANIMACJI ======================
-    # =====================================================================
     def draw_full_frame(
             self,
             points: List[Tuple[float, float]],

@@ -44,7 +44,7 @@ class TSPSolver:
 
         return E
 
-    #  GENETIC ALGORITHM (GA)
+    #  Genetic Algorithm
     def create_random_route(self, n: int) -> List[int]:
         r = list(range(n))
         random.shuffle(r)
@@ -134,7 +134,7 @@ class TSPSolver:
 
         return best_route, best_cost, history, duration
 
-    #pso
+    # Particle Swam Optimization
     def solve_pso(self, points: List[Point], **params):
 
         self.current_drone_config = params["drone_config"]
@@ -148,7 +148,7 @@ class TSPSolver:
         dist = self.compute_distance_matrix(points)
 
         particles = []
-        velocities = []  #listy swapow
+        velocities = []
         pbest = []
         pbest_cost = []
 
@@ -204,7 +204,6 @@ class TSPSolver:
 
         return gbest, gbest_cost, duration
 
-    #pso metody pomocnicze
     def permutation_difference(self, current: List[int], target: List[int]):
         """
         Zwraca listę swapów, które przekształcają current → target.
@@ -219,7 +218,6 @@ class TSPSolver:
                 j = index[target[i]]
                 diffs.append((i, j))
 
-                # wykonaj swap i odśwież index
                 curr[i], curr[j] = curr[j], curr[i]
                 index[curr[i]] = i
                 index[curr[j]] = j
@@ -233,7 +231,6 @@ class TSPSolver:
             p[i], p[j] = p[j], p[i]
         return p
 
-    #tsp dla wielu dronów
     def compute_energy_cost(self, drone_config, route_coords: List[Point]) -> float:
 
         C = drone_config["battery_capacity"]

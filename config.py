@@ -14,7 +14,6 @@ DEFAULT_TSP_METHODS = ["GA", "PSO"]
 DRONE_COLORS = ["red", "orange", "green", "blue", "purple"]
 DRONE_NAMES = ["default", "DJI Mini 3 Pro", "DJI Air 2S", "DJI Mavic 3", "DJI Matrice 30"]
 
-#symulacja
 SIM_SPEED = 40.0
 SIM_TIMESTEP = 0.05
 ANIMATION_DELAY = 30
@@ -57,7 +56,6 @@ DRONE_MODELS = {
     }
 }
 
-
 GA_PARAMS = {
     "pop_size": 60,
     "generations": 200,
@@ -67,9 +65,9 @@ GA_PARAMS = {
 }
 
 PSO_PARAMS = {
-    "iterations": 200, #300
-    "swarm_size": 40, #50
-    "w": 0.8,  # inertia niewykorzystywana dla pso permutacji
+    "iterations": 200,
+    "swarm_size": 40,
+    "w": 0.8,  # inercja niewykorzystywana dla pso permutacji
     "c1": 1.5,  # cognitive component
     "c2": 1.5,  # social component
 }
