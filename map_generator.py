@@ -37,7 +37,6 @@ def validate_map(points: List[Tuple[float, float]]):
 
 
 class MapGenerator:
-    """Klasa odpowiedzialna za generowanie i przechowywanie punktów map."""
 
     def __init__(self):
         random.seed()
@@ -50,7 +49,6 @@ class MapGenerator:
         return [(x * spacing, y * spacing) for x in range(cols) for y in range(rows)]
 
     def create_maps(self):
-        """Tworzy przykładowe mapy i automatycznie je waliduje."""
 
         raw_maps = {
             "Mapa 1": self.generate_random_points(40, (-1000, 1000), (-1000, 1000)),

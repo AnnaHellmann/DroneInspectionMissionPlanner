@@ -1,5 +1,5 @@
-numpy #obsługa wielowymiarowych tabeli i macierzy
-matplotlib #tworzenie wyzualizacji
-pandas #analiza danych
-networkx #narzędzie do działania na siatkach grafów, modelowania problemu mTSP i wizualizacji trasy przelotu dronów.
+numpy
+matplotlib
+pandas
+networkx
 scikit-learn

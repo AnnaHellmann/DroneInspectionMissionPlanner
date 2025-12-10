@@ -1,4 +1,8 @@
-# optimizer.py
+# Dzieli punkty między drony (TaskAllocator – mTSP).
+# Rozwiązuje TSP dla każdego drona metodą GA lub PSO (TSPSolver).
+# Sprawdza wykonalność tras pod względem energii.
+# Zwraca zoptymalizowane trasy oraz czas optymalizacji.
+
 from task_allocator import TaskAllocator
 from tsp_solver import TSPSolver
 from typing import List, Tuple, Dict
@@ -10,6 +14,8 @@ import time
 Point = Tuple[float, float]
 
 class Optimizer:
+    """Dzieli punkty między drony (TaskAllocator – mTSP). Rozwiązuje TSP dla każdego drona metodą GA lub PSO (TSPSolver).
+    Sprawdza wykonalność tras pod względem energii. Zwraca zoptymalizowane trasy oraz czas optymalizacji."""
     def __init__(self, drone_configs, tsp_method):
         self.drone_configs = drone_configs
         self.tsp_method = tsp_method
@@ -18,19 +24,14 @@ class Optimizer:
         self.solver = TSPSolver(method=tsp_method)
 
 
-
     def optimize(self, points: List[Point], num_drones: int):
-        """
-        1. dzieli punkty między drony (mTSP)
-        2. optymalizuje TSP dla każdego drona
-        """
 
         if num_drones <= 0:
             return None
 
         self.solver.drone_configs = self.drone_configs
 
-        # --- 1. Alokacja punktów (mTSP → podproblem TSP dla każdego drona)
+        #alokacja punktów (mTSP → podproblem TSP dla każdego drona)
         task_allocation = self.allocator.allocate(
             points,
             num_drones,
@@ -39,7 +40,6 @@ class Optimizer:
 
         start_time = time.time()
 
-        # --- 2. Wywołanie solvera TSP (GA / PSO)
         if self.tsp_method == "ga":
             results = self.solver.solve_for_drones(
                 task_allocation,
@@ -58,7 +58,6 @@ class Optimizer:
                 c2=1.5
             )
 
-        # --- 3. Sprawdzenie, czy wszystkie trasy są energetycznie wykonalne
         all_feasible = True
         for drone_id, data in results.items():
             if not data.get("feasible", True):
@@ -69,17 +68,14 @@ class Optimizer:
         print(f"[OPTIMIZER] Całkowity czas optymalizacji ({self.tsp_method.upper()}): {total_time:.3f} s")
 
         if not all_feasible:
-            # sygnał do app.py, że misja jest niewykonalna
             return None, total_time
 
-        # --- 3. Przekształcenie wyników do formatu używanego w app.py
         optimized_routes = {}
 
         for drone_id, data in results.items():
             optimized_routes[drone_id] = data["route_coords"]
 
-        # --- DEBUG / ANALIZA OBCIĄŻENIA DRONÓW ---
-        print("\n--- ANALIZA OBCIĄŻENIA DRONÓW ---")
+        print("\nobciążenie dronów")
         for drone_id, pts in task_allocation.items():
             route = results[drone_id]["route_coords"]
 
@@ -101,7 +97,5 @@ class Optimizer:
                 f"czas lotu={cfg['flight_time']}, "
                 f"prędkość={cfg['speed']}"
             )
-
-        print("--- KONIEC ANALIZY ---\n")
 
         return optimized_routes, total_time
