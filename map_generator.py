@@ -1,16 +1,11 @@
+#Klasa odpowiedzialna za tworzenie, przechowywanie i udostępnianie zestawów punktów,
+#reprezentujących mapy obszarów inspekcji.
+
 import random
 import math
 from typing import List, Tuple, Dict
 
-# =============================
-#  WALIDACJA MAPY
-# =============================
-
 def validate_map(points: List[Tuple[float, float]]):
-    """
-    Sprawdza czy mapa ma realistyczne wymiary.
-    Zwraca (True, None) jeśli ok lub (False, "komunikat").
-    """
 
     if not points:
         return False, "Mapa nie zawiera żadnych punktów."
@@ -21,13 +16,11 @@ def validate_map(points: List[Tuple[float, float]]):
     width = max(xs) - min(xs)
     height = max(ys) - min(ys)
 
-    # Realistyczne minimalne wymiary (żeby nie było mapy 1x1 metr)
     if width < 50 or height < 50:
-        return False, f"Mapa jest zbyt mała ({width:.1f}x{height:.1f} m). Minimalne wymiary: 50x50 m."
+        return False, f"Mapa jest zbyt mała ({width:.1f}x{height:.1f} m). Minimalne wymiary: 50x50"
 
-    # Realistyczny maksymalny obszar dla misji dronów inspekcyjnych
     if width > 5000 or height > 5000:
-        return False, f"Mapa jest zbyt duża ({width:.1f}x{height:.1f} m). Maksymalne wymiary: 5000x5000 m."
+        return False, f"Mapa jest zbyt duża ({width:.1f}x{height:.1f} m). Maksymalne wymiary: 5000x5000"
 
     # Sprawdzenie absurdalnie dużych odległości
     max_dist = 0
@@ -38,14 +31,10 @@ def validate_map(points: List[Tuple[float, float]]):
                 max_dist = d
 
     if max_dist > 10000:
-        return False, f"Najdalsze punkty są oddalone o {max_dist:.1f} m (>10 km). Mapa nierealistyczna."
+        return False, f"Najdalsze punkty są oddalone o {max_dist:.1f} - mapa odrzucona."
 
     return True, None
 
-
-# =============================
-#  GENERATOR MAP
-# =============================
 
 class MapGenerator:
     """Klasa odpowiedzialna za generowanie i przechowywanie punktów map."""
@@ -80,10 +69,3 @@ class MapGenerator:
 
     def get_points(self, map_name: str) -> List[Tuple[float, float]]:
         return self.maps.get(map_name, [])
-
-
-if __name__ == "__main__":
-    gen = MapGenerator()
-    gen.create_maps()
-    for name, points in gen.maps.items():
-        print(name, len(points), "punktów")

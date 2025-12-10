@@ -1,9 +1,8 @@
 # config.py
 
-ALLOC_METHOD = "B" #B/A/equally
+ALLOC_METHOD = "C" #B/A/equally
 # TSP_METHOD = "ga"
 
-# --- UI CONFIG ---
 WINDOW_TITLE = "Symulator Misji Dronów"
 WINDOW_SIZE = "1000x650"
 
@@ -15,12 +14,11 @@ DEFAULT_TSP_METHODS = ["GA", "PSO"]
 DRONE_COLORS = ["red", "orange", "green", "blue", "purple"]
 DRONE_NAMES = ["default", "DJI Mini 3 Pro", "DJI Air 2S", "DJI Mavic 3", "DJI Matrice 30"]
 
-# --- SIMULATION CONFIG ---
+#symulacja
 SIM_SPEED = 40.0
 SIM_TIMESTEP = 0.05
 ANIMATION_DELAY = 30
 
-# --- DRONE MODELS ---
 DRONE_MODELS = {
     DRONE_NAMES[0]: {
         "Zasięg [m]": 0,

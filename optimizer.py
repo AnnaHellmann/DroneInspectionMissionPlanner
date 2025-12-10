@@ -78,4 +78,30 @@ class Optimizer:
         for drone_id, data in results.items():
             optimized_routes[drone_id] = data["route_coords"]
 
+        # --- DEBUG / ANALIZA OBCIĄŻENIA DRONÓW ---
+        print("\n--- ANALIZA OBCIĄŻENIA DRONÓW ---")
+        for drone_id, pts in task_allocation.items():
+            route = results[drone_id]["route_coords"]
+
+            # liczba punktów
+            n_points = len(pts)
+
+            # długość trasy
+            length = 0
+            for i in range(len(route) - 1):
+                length += euclidean_distance(route[i], route[i + 1])
+
+            cfg = self.drone_configs[drone_id]
+
+            print(
+                f"Dron {drone_id}: "
+                f"punkty={n_points}, "
+                f"długość trasy={length:.1f} m, "
+                f"bateria={cfg['battery_capacity']}, "
+                f"czas lotu={cfg['flight_time']}, "
+                f"prędkość={cfg['speed']}"
+            )
+
+        print("--- KONIEC ANALIZY ---\n")
+
         return optimized_routes, total_time
