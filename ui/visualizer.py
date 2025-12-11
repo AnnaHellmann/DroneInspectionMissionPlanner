@@ -65,7 +65,7 @@ class Visualizer:
     def draw_base(self) -> None:
         bx, by = self.transform(0.0, 0.0)
         self.canvas.create_rectangle(bx - 6, by - 6, bx + 6, by + 6, fill="black")
-        self.canvas.create_text(bx + 12, by, text="Baza", fill="black", anchor="w")
+        self.canvas.create_text(bx + 12, by, text="", fill="black", anchor="w")
 
     def draw_routes(self, routes: Dict[int, List[Tuple[float, float]]], colors: List[str]) -> None:
         for drone_id, route in routes.items():

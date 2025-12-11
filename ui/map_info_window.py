@@ -2,7 +2,7 @@
 
 import tkinter as tk
 from tkinter import ttk
-from utils import euclidean_distance
+from core.utils import euclidean_distance
 
 
 class MapInfoWindow:

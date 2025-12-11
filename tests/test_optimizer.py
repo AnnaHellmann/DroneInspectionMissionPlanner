@@ -2,8 +2,8 @@
 import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))  # pozwala importować z katalogu głównego
 
-from optimizer import Optimizer
-from map_generator import MapGenerator
+from algorithms.optimizer import Optimizer
+from core.map_generator import MapGenerator
 
 
 def test_optimizer_routes():

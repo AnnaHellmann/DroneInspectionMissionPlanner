@@ -3,12 +3,12 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import platform
 
-from map_generator import MapGenerator
-from optimizer import Optimizer
-from simulator import Simulator
-from visualizer import Visualizer
-import config
-from config import DEFAULT_DRONE_COUNT, DEFAULT_TSP_METHODS
+from core.map_generator import MapGenerator
+from algorithms.optimizer import Optimizer
+from simulation.simulator import Simulator
+from ui.visualizer import Visualizer
+from core import config
+from core.config import DEFAULT_DRONE_COUNT, DEFAULT_TSP_METHODS
 
 from ui.map_info_window import MapInfoWindow
 from ui.drone_manager import DroneManager
@@ -193,7 +193,7 @@ class DroneApp(tk.Tk):
         self.canvas.create_text(
             self.canvas.winfo_width() // 2,
             30,
-            text=f"Punkty inspekcji - {map_name}",
+            text=f"{map_name}",
             font=("Arial", 13, "bold"),
             fill="#333",
             tags="title"

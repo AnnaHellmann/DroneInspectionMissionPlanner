@@ -3,12 +3,12 @@
 # Sprawdza wykonalność tras pod względem energii.
 # Zwraca zoptymalizowane trasy oraz czas optymalizacji.
 
-from task_allocator import TaskAllocator
-from tsp_solver import TSPSolver
-from typing import List, Tuple, Dict
-from config import ALLOC_METHOD
+from algorithms.task_allocator import TaskAllocator
+from algorithms.tsp_solver import TSPSolver
+from typing import List, Tuple
+from core.config import ALLOC_METHOD
 
-from utils import euclidean_distance
+from core.utils import euclidean_distance
 import time
 
 Point = Tuple[float, float]
@@ -39,23 +39,7 @@ class Optimizer:
 
         start_time = time.time()
 
-        if self.tsp_method == "ga":
-            results = self.solver.solve_for_drones(
-                task_allocation,
-                pop_size=80,
-                generations=300,
-                mutation_rate=0.1,
-                crossover_rate=0.9
-            )
-        elif self.tsp_method == "pso":
-            results = self.solver.solve_for_drones(
-                task_allocation,
-                iterations=300,
-                swarm_size=50,
-                w=0.8,
-                c1=1.5,
-                c2=1.5
-            )
+        results = self.solver.solve_for_drones(task_allocation)
 
         all_feasible = True
         for drone_id, data in results.items():

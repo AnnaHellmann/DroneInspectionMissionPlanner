@@ -1,21 +1,23 @@
-#implementacja GA i PSO, Funkcja celu oparta jest
+# implementacja GA i PSO, Funkcja celu oparta jest
 # na koszcie energetycznym lotu wyznaczonym z parametrów
 # drona (bateria, czas lotu, prędkość, czas
 # obsługi punktu), z ograniczeniem do 80% pojemności baterii
 from __future__ import annotations
 from typing import List, Tuple, Dict
-from utils import euclidean_distance
+from core.utils import euclidean_distance
 import random
 import math
 import time
-import config
+from core import config
 
 Point = Tuple[float, float]
 BASE: Point = (0.0, 0.0)
 
+
 class TSPSolver:
     """implementacja GA i PSO, Funkcja celu oparta jest na koszcie energetycznym lotu wyznaczonym z parametrów drona
     (bateria, czas lotu, prędkość, czas obsługi punktu), z ograniczeniem do 80% pojemności baterii"""
+
     def __init__(self, method):
 
         self.method = method.lower()
@@ -134,7 +136,21 @@ class TSPSolver:
 
         return best_route, best_cost, history, duration
 
-    # Particle Swam Optimization
+    # --- Nowa funkcja pomocnicza dla PSO ---
+    def random_select_swaps(self, diffs: List[Tuple[int, int]], factor: float) -> List[Tuple[int, int]]:
+        """Losowo wybiera podzbiór swapów z listy diffs, skalowany przez factor."""
+
+        if not diffs:
+            return []
+
+        count = max(1, int(len(diffs) * factor)) if factor > 0 else 0
+
+        if count >= len(diffs):
+            return diffs
+
+        return random.sample(diffs, count)
+
+    # Particle Swam Optimization (ZMIENIONA)
     def solve_pso(self, points: List[Point], **params):
 
         self.current_drone_config = params["drone_config"]
@@ -173,19 +189,23 @@ class TSPSolver:
 
             for i in range(swarm_size):
 
-                new_velocity = velocities[i][:]
+                # ZMIANA: Inercja - bierzemy tylko 10% z końca starej prędkości dla stabilności
+                new_velocity = velocities[i][int(len(velocities[i]) * 0.9):]
 
                 diff_pbest = self.permutation_difference(particles[i], pbest[i])
                 diff_gbest = self.permutation_difference(particles[i], gbest)
 
-                if random.random() < c1:
-                    new_velocity.extend(diff_pbest)
+                # ZMIANA: CZĘŚĆ KOGNITYWNA (Skalowanie c1 zamiast binarnego progu)
+                cognitive_swaps = self.random_select_swaps(diff_pbest, c1 / 2.0)
+                new_velocity.extend(cognitive_swaps)
 
-                if random.random() < c2:
-                    new_velocity.extend(diff_gbest)
+                # ZMIANA: CZĘŚĆ SPOŁECZNA (Skalowanie c2 zamiast binarnego progu)
+                social_swaps = self.random_select_swaps(diff_gbest, c2 / 2.0)
+                new_velocity.extend(social_swaps)
 
-                if len(new_velocity) > n * 3:
-                    new_velocity = new_velocity[-n * 3:]
+                # ZMIANA: Zabezpieczenie przed zbyt długą prędkością (chaos), limit n*2
+                if len(new_velocity) > n * 2:
+                    new_velocity = new_velocity[-n * 2:]
 
                 velocities[i] = new_velocity
 
@@ -253,12 +273,14 @@ class TSPSolver:
 
         return k * total_time
 
-
     def solve_for_drones(self, task_allocation: Dict[int, List[Point]], **params) -> Dict[int, Dict]:
 
         results: Dict[int, Dict] = {}
 
         for drone_id, points in task_allocation.items():
+            # Ta linia jest już poprawnie obsługiwana dzięki zmianie w optimizer.py,
+            # ale musi odwoływać się do self.drone_configs,
+            # które zostało ustawione w optimizer.optimize
             drone_config = self.drone_configs[drone_id]
 
             filtered_points = [p for p in points if p != BASE]
@@ -285,8 +307,8 @@ class TSPSolver:
                 feasible = energy <= 0.8 * drone_config["battery_capacity"]
 
                 cost = (
-                    math.dist(BASE, single) +
-                    math.dist(single, BASE)
+                        math.dist(BASE, single) +
+                        math.dist(single, BASE)
                 )
 
                 results[drone_id] = {
@@ -301,18 +323,27 @@ class TSPSolver:
 
             self.current_drone_config = drone_config
 
+            # Parametry są brane z config.py, nie musimy ich przekazywać
+            ga_params = {**config.GA_PARAMS, "drone_config": drone_config}
+            pso_params = {**config.PSO_PARAMS, "drone_config": drone_config}
+
+            # Nadpisujemy wartości parametrami z *params (przekazanymi z optimizer.py)
+            for key, val in params.items():
+                if key in config.GA_PARAMS:
+                    ga_params[key] = val
+                if key in config.PSO_PARAMS:
+                    pso_params[key] = val
+
             if self.method == "ga":
                 order, cost, history, duration = self.solve_ga(
                     filtered_points,
-                    drone_config=drone_config,
-                    **config.GA_PARAMS
+                    **ga_params
                 )
 
             elif self.method == "pso":
                 order, cost, duration = self.solve_pso(
                     filtered_points,
-                    drone_config=drone_config,
-                    **config.PSO_PARAMS
+                    **pso_params
                 )
 
             else:

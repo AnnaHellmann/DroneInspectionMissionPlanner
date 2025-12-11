@@ -1,6 +1,6 @@
 # config.py
 
-ALLOC_METHOD = "C" #B/A/equally
+ALLOC_METHOD = "D" #D/C/B/A/equally
 # TSP_METHOD = "ga"
 
 WINDOW_TITLE = "Symulator Misji Dronów"
@@ -57,17 +57,17 @@ DRONE_MODELS = {
 }
 
 GA_PARAMS = {
-    "pop_size": 60,
-    "generations": 200,
+    "pop_size": 100,
+    "generations": 800,
     "crossover_rate": 0.9,
-    "mutation_rate": 0.15,
+    "mutation_rate": 0.2,
     "tournament_k": 3,
 }
 
 PSO_PARAMS = {
-    "iterations": 200,
-    "swarm_size": 40,
-    "w": 0.8,  # inercja niewykorzystywana dla pso permutacji
-    "c1": 1.5,  # cognitive component
-    "c2": 1.5,  # social component
+    "iterations": 1200,
+    "swarm_size": 200,
+    "w": 0.0,  # inercja niewykorzystywana dla pso permutacji
+    "c1": 1.2,  # cognitive component
+    "c2": 2.2,  # social component
 }

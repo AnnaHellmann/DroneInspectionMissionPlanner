@@ -4,7 +4,7 @@
 #  • Opcja C – Power-Weighted KMeans (moc drona decyduje o liczbie punktów)
 
 from typing import List, Tuple, Dict
-from utils import euclidean_distance
+from core.utils import euclidean_distance
 
 try:
     from sklearn.cluster import KMeans
@@ -30,8 +30,8 @@ class TaskAllocator:
         elif self.method == "C":
             return allocate_option_C(points, drone_configs)
 
-        # elif self.method == "D":
-        #     return allocate_option_D(points, drone_configs)
+        elif self.method == "D":
+            return allocate_option_D(points, drone_configs)
 
         else:
             return {
@@ -274,3 +274,153 @@ def allocate_option_C(points: List[Point], drone_configs: Dict[int, Dict]):
                 changed = True
 
     return routes
+
+# OPCJA D:
+# Każdy dron musi odwiedzić skrajne punkty swojego obszaru.
+# Punkty graniczne obszaru drona oddawane są mocniejszemu dronowi,
+# jeśli dron nie wyrabia energetycznie.
+
+def allocate_option_D(points: List[Point], drone_configs: Dict[int, Dict]):
+
+    num = len(drone_configs)
+    if not SKLEARN_AVAILABLE:
+        raise RuntimeError("KMeans wymaga scikit-learn")
+
+    # ---- 1) Klasteryzacja ----
+    kmeans = KMeans(n_clusters=num, n_init=10)
+    labels = kmeans.fit_predict(points)
+    centers = kmeans.cluster_centers_
+
+    routes = {d: [] for d in range(num)}
+    for p, lab in zip(points, labels):
+        routes[lab].append(p)
+
+    # ---- 2) Wyznacz moc dronów ----
+    powers = [drone_power(drone_configs[d]) for d in range(num)]
+    weakest_first = sorted(range(num), key=lambda d: powers[d])
+
+    # ---- 3) Wyznacz globalne skrajności mapy ----
+    xs = [p[0] for p in points]
+    ys = [p[1] for p in points]
+
+    minX, maxX = min(xs), max(xs)
+    minY, maxY = min(ys), max(ys)
+
+    # ---- 4) Przygotuj edge_points / border_points / core_points dla każdego drona ----
+    def classify_points(drone_id, pts):
+        """Dzieli punkty: edge | border | core"""
+
+        center = centers[drone_id]
+
+        edge = []
+        border = []
+        core = []
+
+        for p in pts:
+            px, py = p
+
+            # —— EDGE: na krawędzi mapy — MUSI zostać
+            if px == minX or px == maxX or py == minY or py == maxY:
+                edge.append(p)
+                continue
+
+            # —— BORDER: bliżej innego centroidu niż własnego
+            my_dist = euclidean_distance(center, p)
+            closest_other = min(
+                (euclidean_distance(centers[j], p) for j in range(num) if j != drone_id)
+            )
+
+            if closest_other < my_dist:
+                border.append(p)
+            else:
+                core.append(p)
+
+        return edge, border, core
+
+    # ---- klasyfikacja punktów ----
+    classified = {}
+    for d in range(num):
+        classified[d] = classify_points(d, routes[d])
+
+    # ---- 5) Tworzymy właściwe początkowe trasy ----
+    routes = {d: classified[d][0] + classified[d][1] + classified[d][2] for d in range(num)}
+
+    # edge = classified[d][0]
+    # border = classified[d][1]
+    # core = classified[d][2]
+
+    # ---- 6) Iteracyjnie odciążamy słabsze drony ----
+    changed = True
+    while changed:
+        changed = False
+
+        for d in weakest_first:
+            edge, border, core = classified[d]
+            cfg = drone_configs[d]
+
+            # NIC nie oddajemy z edge!!!
+            current_route = edge + border + core
+
+            if energy_ok(current_route, cfg):
+                continue
+
+            # ---- 6A) Najpierw oddajemy punkty BORDER (przy granicy obszaru) ----
+            if border:
+                # sortujemy: oddajemy punkty najbliższe obszarowi mocniejszego drona
+                border.sort(key=lambda p: min(
+                    euclidean_distance(centers[j], p) for j in range(num) if j != d
+                ))
+
+                p_out = border.pop(0)
+
+            # ---- 6B) Jeśli nadal brakuje energii → oddajemy CORE ----
+            elif core:
+                # CORE oddajemy te najbliższe innym centroidom
+                core.sort(key=lambda p: min(
+                    euclidean_distance(centers[j], p) for j in range(num) if j != d
+                ))
+                p_out = core.pop(0)
+            else:
+                # zostały tylko edge → STOP (nie wolno oddać edge)
+                continue
+
+            # ---- 6C) Wybieramy najlepszego odbiorcę ----
+            candidates = [j for j in range(num) if j != d]
+
+            def receiver_score(j):
+                # im bliżej centrum mocniejszego drona, tym lepiej
+                return euclidean_distance(centers[j], p_out) / (powers[j] + 1e-6)
+
+            best = min(candidates, key=receiver_score)
+
+            # ---- 6D) Przekazujemy punkt ----
+            classified[d] = (edge, border, core)  # aktualizacja
+
+            e2, b2, c2 = classified[best]
+            # odbiorca klasyfikuje ten punkt
+            px, py = p_out
+
+            if px == minX or px == maxX or py == minY or py == maxY:
+                e2.append(p_out)
+            else:
+                # sprawdzamy czy bliżej jego obszaru czy innego
+                my_dist = euclidean_distance(centers[best], p_out)
+                closest_other = min(
+                    euclidean_distance(centers[k], p_out) for k in range(num) if k != best
+                )
+                if closest_other < my_dist:
+                    b2.append(p_out)
+                else:
+                    c2.append(p_out)
+
+            classified[best] = (e2, b2, c2)
+
+            changed = True
+
+    # ---- finalne trasy ----
+    final_routes = {}
+    for d in range(num):
+        e, b, c = classified[d]
+        final_routes[d] = e + b + c
+
+    return final_routes
