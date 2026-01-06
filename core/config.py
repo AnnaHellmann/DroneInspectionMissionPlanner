@@ -1,6 +1,6 @@
 # config.py
 
-ALLOC_METHOD = "D" #D/C/B/A/equally
+ALLOC_METHOD = "C" #D/C/B/A/equally
 # TSP_METHOD = "ga"
 
 WINDOW_TITLE = "Symulator Misji Dronów"
@@ -26,13 +26,20 @@ DRONE_MODELS = {
         "Prędkość [m/s]": 10,
         "Czas obsługi punktu [s]": 5
     },
+    # DRONE_NAMES[1]: {
+    #     "Zasięg [m]": 18000,
+    #     "Czas lotu [s]": 34 * 60,
+    #     "Pojemność baterii [mAh]": 2453,
+    #     "Prędkość [m/s]": 16,
+    #     "Czas obsługi punktu [s]": 5
+    # },
     DRONE_NAMES[1]: {
-        "Zasięg [m]": 18000,
-        "Czas lotu [s]": 34 * 60,
-        "Pojemność baterii [mAh]": 2453,
-        "Prędkość [m/s]": 16,
-        "Czas obsługi punktu [s]": 5
-    },
+            "Zasięg [m]": 10000,
+            "Czas lotu [s]": 1240,
+            "Pojemność baterii [mAh]": 1553,
+            "Prędkość [m/s]": 16,
+            "Czas obsługi punktu [s]": 5
+        },
     DRONE_NAMES[2]: {
         "Zasięg [m]": 18000,
         "Czas lotu [s]": 31 * 60,
@@ -55,19 +62,53 @@ DRONE_MODELS = {
         "Czas obsługi punktu [s]": 5
     }
 }
+# #8x8
+# GA_PARAMS = {
+#     "pop_size": 50,
+#     "generations": 150,
+#     "crossover_rate": 0.8,
+#     "mutation_rate": 0.1,
+#     "tournament_k": 2,
+# }
+#
+# PSO_PARAMS = {
+#     "iterations": 40,
+#     "swarm_size": 200,
+#     "w": 0.0,  # inercja niewykorzystywana dla pso permutacji
+#     "c1": 1.5,  # cognitive component
+#     "c2": 1.5,  # social component
+# }
 
+#10x15
 GA_PARAMS = {
     "pop_size": 100,
-    "generations": 800,
+    "generations": 500,
     "crossover_rate": 0.9,
-    "mutation_rate": 0.2,
+    "mutation_rate": 0.15,
     "tournament_k": 3,
 }
 
 PSO_PARAMS = {
-    "iterations": 1200,
-    "swarm_size": 200,
+    "iterations": 120,
+    "swarm_size": 800,
     "w": 0.0,  # inercja niewykorzystywana dla pso permutacji
     "c1": 1.2,  # cognitive component
-    "c2": 2.2,  # social component
+    "c2": 2.0,  # social component
 }
+
+# #20x20
+# GA_PARAMS = {
+#     "pop_size": 150,
+#     "generations": 400,
+#     "crossover_rate": 0.9,
+#     "mutation_rate": 0.3,
+#     "tournament_k": 5,
+# }
+#
+# PSO_PARAMS = {
+#     "iterations": 600,
+#     "swarm_size": 120,
+#     "w": 0.0,  # inercja niewykorzystywana dla pso permutacji
+#     "c1": 0.8,  # cognitive component
+#     "c2": 2.5,  # social component
+# }

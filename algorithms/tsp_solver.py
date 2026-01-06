@@ -109,6 +109,10 @@ class TSPSolver:
         for _ in range(generations):
             new_pop = []
 
+            # --- ELITARYZM: Zachowaj 2 najlepszych osobników ---
+            population.sort(key=lambda r: self.route_length(r, dist, points))
+            new_pop.extend([p[:] for p in population[:2]])
+
             while len(new_pop) < pop_size:
                 p1 = self.tournament_selection(population, dist, points, tournament_k)
                 p2 = self.tournament_selection(population, dist, points, tournament_k)
@@ -132,11 +136,13 @@ class TSPSolver:
 
             history.append(best_cost)
 
+        best_route = self.two_opt(best_route, dist, points)
+        best_cost = self.route_length(best_route, dist, points)
+
         duration = time.time() - start
 
         return best_route, best_cost, history, duration
 
-    # --- Nowa funkcja pomocnicza dla PSO ---
     def random_select_swaps(self, diffs: List[Tuple[int, int]], factor: float) -> List[Tuple[int, int]]:
         """Losowo wybiera podzbiór swapów z listy diffs, skalowany przez factor."""
 
@@ -150,7 +156,7 @@ class TSPSolver:
 
         return random.sample(diffs, count)
 
-    # Particle Swam Optimization (ZMIENIONA)
+    # Particle Swam Optimization
     def solve_pso(self, points: List[Point], **params):
 
         self.current_drone_config = params["drone_config"]
@@ -189,21 +195,17 @@ class TSPSolver:
 
             for i in range(swarm_size):
 
-                # ZMIANA: Inercja - bierzemy tylko 10% z końca starej prędkości dla stabilności
                 new_velocity = velocities[i][int(len(velocities[i]) * 0.9):]
 
                 diff_pbest = self.permutation_difference(particles[i], pbest[i])
                 diff_gbest = self.permutation_difference(particles[i], gbest)
 
-                # ZMIANA: CZĘŚĆ KOGNITYWNA (Skalowanie c1 zamiast binarnego progu)
                 cognitive_swaps = self.random_select_swaps(diff_pbest, c1 / 2.0)
                 new_velocity.extend(cognitive_swaps)
 
-                # ZMIANA: CZĘŚĆ SPOŁECZNA (Skalowanie c2 zamiast binarnego progu)
                 social_swaps = self.random_select_swaps(diff_gbest, c2 / 2.0)
                 new_velocity.extend(social_swaps)
 
-                # ZMIANA: Zabezpieczenie przed zbyt długą prędkością (chaos), limit n*2
                 if len(new_velocity) > n * 2:
                     new_velocity = new_velocity[-n * 2:]
 
@@ -220,8 +222,11 @@ class TSPSolver:
                         gbest = particles[i][:]
                         gbest_cost = cost
 
-        duration = time.time() - start
+        # Optymalizacja końcowa
+        gbest = self.two_opt(gbest, dist, points)
+        gbest_cost = self.route_length(gbest, dist, points)
 
+        duration = time.time() - start
         return gbest, gbest_cost, duration
 
     def permutation_difference(self, current: List[int], target: List[int]):
@@ -251,6 +256,37 @@ class TSPSolver:
             p[i], p[j] = p[j], p[i]
         return p
 
+    def inversion_mutation(self, route: List[int], mutation_rate: float):
+        """Odwraca losowy fragment trasy - znacznie skuteczniejsze dla TSP niż swap."""
+        r = route[:]
+        if random.random() < mutation_rate:
+            # Wybieramy dwa punkty i odwracamy wszystko pomiędzy nimi
+            i, j = sorted(random.sample(range(len(r)), 2))
+            r[i:j + 1] = r[i:j + 1][::-1]
+        return r
+
+    def two_opt(self, route: List[int], dist, points) -> List[int]:
+        """Lokalna optymalizacja: usuwa skrzyżowania w trasie."""
+        best_route = route[:]
+        improved = True
+
+        while improved:
+            improved = False
+            for i in range(1, len(best_route) - 2):
+                for j in range(i + 1, len(best_route)):
+                    if j - i == 1: continue  # Sąsiednie punkty - pomijamy
+
+                    # Tworzymy nową trasę przez odwrócenie segmentu
+                    new_route = best_route[:]
+                    new_route[i:j] = best_route[i:j][::-1]
+
+                    # Sprawdzamy, czy nowa trasa jest lepsza (krótsza/mniej energochłonna)
+                    if self.route_length(new_route, dist, points) < self.route_length(best_route, dist, points):
+                        best_route = new_route
+                        improved = True
+            if not improved: break
+        return best_route
+
     def compute_energy_cost(self, drone_config, route_coords: List[Point]) -> float:
 
         C = drone_config["battery_capacity"]
@@ -278,9 +314,6 @@ class TSPSolver:
         results: Dict[int, Dict] = {}
 
         for drone_id, points in task_allocation.items():
-            # Ta linia jest już poprawnie obsługiwana dzięki zmianie w optimizer.py,
-            # ale musi odwoływać się do self.drone_configs,
-            # które zostało ustawione w optimizer.optimize
             drone_config = self.drone_configs[drone_id]
 
             filtered_points = [p for p in points if p != BASE]
@@ -323,11 +356,9 @@ class TSPSolver:
 
             self.current_drone_config = drone_config
 
-            # Parametry są brane z config.py, nie musimy ich przekazywać
             ga_params = {**config.GA_PARAMS, "drone_config": drone_config}
             pso_params = {**config.PSO_PARAMS, "drone_config": drone_config}
 
-            # Nadpisujemy wartości parametrami z *params (przekazanymi z optimizer.py)
             for key, val in params.items():
                 if key in config.GA_PARAMS:
                     ga_params[key] = val

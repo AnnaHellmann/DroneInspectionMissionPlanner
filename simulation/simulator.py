@@ -5,7 +5,6 @@ import math
 
 BASE = (0.0, 0.0)
 
-
 class Simulator:
     def __init__(self, paths, drone_configs, timestep=0.05, speedup=50.0):
 

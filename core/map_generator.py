@@ -50,10 +50,10 @@ class MapGenerator:
     def create_maps(self):
 
         raw_maps = {
-            "Mapa 1": self.generate_random_points(40, (-1000, 1000), (-1000, 1000)),
-            "Mapa 2": self.generate_random_points(100, (100, 3500), (100, 3500)),
+            "Mapa 100": self.generate_random_points(100, (100, 3500), (100, 3500)),
             "Mapa 8x8": self.generate_grid_points(8, 8, 10.0),
             "Mapa 10x15": self.generate_grid_points(10, 15, 10.0),
+            "Mapa 16x16": self.generate_grid_points(16, 16, 10.0),
             "Mapa 20x20": self.generate_grid_points(20, 20, 10.0)
         }
 
