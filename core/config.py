@@ -1,10 +1,10 @@
-# config.py
-
-ALLOC_METHOD = "C" #D/C/B/A/equally
-# TSP_METHOD = "ga"
+ALLOC_METHOD = "C"
 
 WINDOW_TITLE = "Symulator Misji Dronów"
 WINDOW_SIZE = "1000x650"
+
+SIDEBAR_BG = "#e0e0e0"
+CANVAS_BG = "#fafafa"
 
 BACKGROUND_COLOR = "#f4f4f4"
 
@@ -12,7 +12,7 @@ DEFAULT_DRONE_COUNT = [1, 2, 3, 4, 5]
 DEFAULT_TSP_METHODS = ["GA", "PSO"]
 
 DRONE_COLORS = ["red", "orange", "green", "blue", "purple"]
-DRONE_NAMES = ["default", "DJI Mini 3 Pro", "DJI Air 2S", "DJI Mavic 3", "DJI Matrice 30"]
+DRONE_NAMES = [" ", "DJI Mini 3 Pro", "DJI Air 2S", "DJI Mavic 3", "DJI Matrice 30"]
 
 SIM_SPEED = 40.0
 SIM_TIMESTEP = 0.05
@@ -23,23 +23,16 @@ DRONE_MODELS = {
         "Zasięg [m]": 0,
         "Czas lotu [s]": 0,
         "Pojemność baterii [mAh]": 0,
-        "Prędkość [m/s]": 10,
+        "Prędkość [m/s]": 0,
+        "Czas obsługi punktu [s]": 0
+    },
+    DRONE_NAMES[1]: {
+        "Zasięg [m]": 18000,
+        "Czas lotu [s]": 34 * 60,
+        "Pojemność baterii [mAh]": 2453,
+        "Prędkość [m/s]": 16,
         "Czas obsługi punktu [s]": 5
     },
-    # DRONE_NAMES[1]: {
-    #     "Zasięg [m]": 18000,
-    #     "Czas lotu [s]": 34 * 60,
-    #     "Pojemność baterii [mAh]": 2453,
-    #     "Prędkość [m/s]": 16,
-    #     "Czas obsługi punktu [s]": 5
-    # },
-    DRONE_NAMES[1]: {
-            "Zasięg [m]": 10000,
-            "Czas lotu [s]": 1240,
-            "Pojemność baterii [mAh]": 1553,
-            "Prędkość [m/s]": 16,
-            "Czas obsługi punktu [s]": 5
-        },
     DRONE_NAMES[2]: {
         "Zasięg [m]": 18000,
         "Czas lotu [s]": 31 * 60,

@@ -63,7 +63,7 @@ class DroneManager:
 
             for param, val in default_model.items():
                 tk.Label(frame, text=f"{param}:", bg="#f0f0f0").grid(row=row_index, column=0, sticky="w")
-                entry = ttk.Entry(frame, width=12)
+                entry = ttk.Entry(frame, width=12, state="readonly")
                 entry.insert(0, val)
                 entry.grid(row=row_index, column=1, padx=5, pady=2)
                 entries[param] = entry
@@ -74,8 +74,10 @@ class DroneManager:
             def update_from_model(event=None, combo=model_combo, entry_dict=entries):
                 new_model = self.drone_models[combo.get()]
                 for param, entry in entry_dict.items():
+                    entry.configure(state="normal")
                     entry.delete(0, tk.END)
                     entry.insert(0, new_model[param])
+                    entry.configure(state="readonly")
 
             model_combo.bind("<<ComboboxSelected>>", update_from_model)
 
@@ -84,7 +86,7 @@ class DroneManager:
 
         for i, frame in enumerate(self.frames):
             params = {}
-            print("FRAME ATTRS:", dir(frame))
+            # print("FRAME ATTRS:", dir(frame))
 
             drone_name = frame.drone_type_var.get() if hasattr(frame, "drone_type_var") else f"Dron {i}"
 

@@ -48,7 +48,6 @@ class Optimizer:
                 print(f"[OPTIMIZER] Dron {drone_id + 1} nie może wykonać swojej trasy – przekroczony limit energii.")
 
         total_time = time.time() - start_time
-        print(f"[OPTIMIZER] Całkowity czas optymalizacji ({self.tsp_method.upper()}): {total_time:.3f} s")
 
         if not all_feasible:
             return None, total_time

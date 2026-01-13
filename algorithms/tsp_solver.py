@@ -309,6 +309,12 @@ class TSPSolver:
 
         return k * total_time
 
+    def compute_route_distance(self, route_coords: List[Point]) -> float:
+        total = 0.0
+        for i in range(len(route_coords) - 1):
+            total += euclidean_distance(route_coords[i], route_coords[i + 1])
+        return total
+
     def solve_for_drones(self, task_allocation: Dict[int, List[Point]], **params) -> Dict[int, Dict]:
 
         results: Dict[int, Dict] = {}
@@ -337,11 +343,11 @@ class TSPSolver:
                 route_coords = [BASE, single, BASE]
 
                 energy = self.compute_energy_cost(drone_config, route_coords)
-                feasible = energy <= 0.8 * drone_config["battery_capacity"]
+                distance = self.compute_route_distance(route_coords)
 
-                cost = (
-                        math.dist(BASE, single) +
-                        math.dist(single, BASE)
+                feasible = (
+                        energy <= 0.8 * drone_config["battery_capacity"]
+                        and distance <= drone_config["range"]
                 )
 
                 results[drone_id] = {
@@ -383,13 +389,19 @@ class TSPSolver:
             route_coords = [BASE] + [filtered_points[i] for i in order] + [BASE]
 
             real_energy = self.compute_energy_cost(drone_config, route_coords)
-            feasible = real_energy <= 0.8 * drone_config["battery_capacity"]
+            real_distance = self.compute_route_distance(route_coords)
+
+            feasible = (
+                    real_energy <= 0.8 * drone_config["battery_capacity"]
+                    and real_distance <= drone_config["range"]
+            )
 
             results[drone_id] = {
                 "order": order,
                 "route_coords": route_coords,
                 "cost": cost,
                 "energy": real_energy,
+                "distance": real_distance,
                 "feasible": feasible,
                 "time": duration,
             }
