@@ -7,15 +7,15 @@ from algorithms.optimizer import Optimizer
 from simulation.simulator import Simulator
 from ui.visualizer import Visualizer
 from core import config
-from core.config import DEFAULT_DRONE_COUNT, DEFAULT_TSP_METHODS
+from core.config import DEFAULT_DRONE_COUNT, DEFAULT_TSP_METHODS, SIDEBAR_BG, MAP_TO_PROFILE, BASE
 from algorithms.tsp_solver import TSPSolver
 
 from ui.map_info_window import MapInfoWindow
 from ui.drone_manager import DroneManager
 from ui.scroll_frame import ScrollFrame
 
-
 class DroneApp(tk.Tk):
+
     def __init__(self):
         super().__init__()
 
@@ -65,10 +65,10 @@ class DroneApp(tk.Tk):
         self.main_area.pack(side="right", expand=True, fill="both", padx=10, pady=10)
 
     def create_sidebar_widgets(self):
-        tk.Label(self.sidebar, text="Ustawienia misji", bg="#e0e0e0",
+        tk.Label(self.sidebar, text="Ustawienia misji", bg=SIDEBAR_BG,
                  font=("Arial", 12, "bold")).pack(pady=10)
 
-        tk.Label(self.sidebar, text="Liczba dronów:", bg="#e0e0e0").pack(anchor="w", pady=(10, 0))
+        tk.Label(self.sidebar, text="Liczba dronów:", bg=SIDEBAR_BG).pack(anchor="w", pady=(10, 0))
         self.drone_count = ttk.Combobox(self.sidebar, values=DEFAULT_DRONE_COUNT, state="readonly")
         self.drone_count.current(0)
         self.drone_count.pack(fill="x", pady=5)
@@ -77,7 +77,7 @@ class DroneApp(tk.Tk):
             lambda e: self.drone_manager.build_forms(int(self.drone_count.get()))
         )
 
-        tk.Label(self.sidebar, text="Mapa obszaru:", bg="#e0e0e0").pack(anchor="w", pady=(10, 0))
+        tk.Label(self.sidebar, text="Mapa obszaru:", bg=SIDEBAR_BG).pack(anchor="w", pady=(10, 0))
         self.map_choice = ttk.Combobox(self.sidebar, values=list(self.map_points.keys()), state="readonly")
         self.map_choice.set("Wybierz mapę")
         self.map_choice.pack(fill="x", pady=5)
@@ -86,14 +86,14 @@ class DroneApp(tk.Tk):
         ttk.Button(self.sidebar, text="Informacje o mapie", command=self.show_map_info) \
             .pack(fill="x", pady=(5, 10))
 
-        tk.Label(self.sidebar, text="Algorytm TSP:", bg="#e0e0e0").pack(anchor="w", pady=(10, 0))
+        tk.Label(self.sidebar, text="Algorytm TSP:", bg=SIDEBAR_BG).pack(anchor="w", pady=(10, 0))
         self.tsp_method = ttk.Combobox(self.sidebar, values=DEFAULT_TSP_METHODS, state="readonly")
         self.tsp_method.current(0)
         self.tsp_method.pack(fill="x", pady=5)
 
         ttk.Separator(self.sidebar, orient="horizontal").pack(fill="x", pady=10)
 
-        scroll_frame = ScrollFrame(self.sidebar, bg="#e0e0e0")
+        scroll_frame = ScrollFrame(self.sidebar, bg=SIDEBAR_BG)
         scroll_frame.pack(fill="both", expand=True)
         self.drones_section = scroll_frame.get_frame()
 
@@ -112,7 +112,7 @@ class DroneApp(tk.Tk):
         self.visualizer = Visualizer(self.canvas)
 
     def run_simulation(self):
-        if not hasattr(self, "optimized_routes"):
+        if self.optimized_routes is None:
             messagebox.showerror("Błąd", "Najpierw wyznacz trasy!")
             return
 
@@ -129,7 +129,7 @@ class DroneApp(tk.Tk):
 
         self.sim_gen = self.sim.simulate()
 
-        self.flight_paths = {d: [] for d in self.optimized_routes.keys()}
+        self.flight_paths = {d: [BASE] for d in self.optimized_routes.keys()}
         self.last_positions = {}
 
         self.animate()
@@ -210,7 +210,7 @@ class DroneApp(tk.Tk):
         points = self.map_generator.get_points(map_sel)
 
         if not points:
-            messagebox.showerror("Błąd", "Brak punktów dla tej mapy.")
+            messagebox.showerror("Błąd", "Wybierz mapę")
             return
 
         drone_configs = self.drone_manager.get_configs()
@@ -221,9 +221,19 @@ class DroneApp(tk.Tk):
 
         method = self.tsp_method.get().lower()
         optimizer = Optimizer(drone_configs, tsp_method=method)
-        # optimizer = Optimizer(drone_configs)
 
-        optimized_routes, exec_time = optimizer.optimize(points, len(drone_configs))
+        map_name = self.map_choice.get()
+        profile = MAP_TO_PROFILE.get(map_name)
+
+        if profile is None:
+            messagebox.showerror("Błąd", "Nieznany profil dla wybranej mapy.")
+            return
+
+        optimized_routes, exec_time = optimizer.optimize(
+            points,
+            len(drone_configs),
+            profile=profile
+        )
 
         if optimized_routes is None:
             messagebox.showerror(
@@ -251,7 +261,6 @@ class DroneApp(tk.Tk):
             "Harmonogram",
             "\n".join(lines)
         )
-
 
 if __name__ == "__main__":
     app = DroneApp()

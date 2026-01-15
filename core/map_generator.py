@@ -1,6 +1,3 @@
-#Klasa odpowiedzialna za tworzenie, przechowywanie i udostępnianie zestawów punktów,
-#reprezentujących mapy obszarów inspekcji.
-
 import random
 import math
 from typing import List, Tuple, Dict

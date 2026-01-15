@@ -1,11 +1,10 @@
-#Klasa odpowiedzialna za rysowanie punktów mapy, bazy, tras dronów, animacji lotu dronów, legendy
-
 import tkinter as tk
 from typing import Dict, List, Tuple
+from core.config import BASE
 
+Point = Tuple[float, float]
 
 class Visualizer:
-    """rysowanie punktów mapy, bazy, tras dronów, animacji lotu dronów, legendy"""
 
     def __init__(self, canvas: tk.Canvas):
         self.canvas = canvas
@@ -14,13 +13,12 @@ class Visualizer:
         self.offset_x = 0.0
         self.offset_y = 0.0
 
-    def compute_scaling(self, points: List[Tuple[float, float]]) -> None:
-        """Skalowanie i centrowanie mapy względem rozmiaru Canvas."""
+    def compute_scaling(self, points: List[Point]) -> None:
 
         if not points:
             return
 
-        all_points = points + [(0.0, 0.0)]
+        all_points = points + [BASE]
 
         xs = [p[0] for p in all_points]
         ys = [p[1] for p in all_points]
@@ -46,10 +44,9 @@ class Visualizer:
         self.offset_y = (canvas_h - map_h * self.scale) / 2 - min_y * self.scale
 
     def transform(self, x: float, y: float) -> Tuple[float, float]:
-        """Konwersja współrzędnych mapy na piksele Canvas."""
         return x * self.scale + self.offset_x, y * self.scale + self.offset_y
 
-    def draw_map_points(self, points: List[Tuple[float, float]]) -> None:
+    def draw_map_points(self, points: List[Point]) -> None:
         self.canvas.delete("all")
 
         for x, y in points:
@@ -63,11 +60,11 @@ class Visualizer:
             )
 
     def draw_base(self) -> None:
-        bx, by = self.transform(0.0, 0.0)
+        bx, by = self.transform(*BASE)
         self.canvas.create_rectangle(bx - 6, by - 6, bx + 6, by + 6, fill="black")
-        self.canvas.create_text(bx + 12, by, text="", fill="black", anchor="w")
+        self.canvas.create_text(bx + 12, by, fill="black", anchor="w")
 
-    def draw_routes(self, routes: Dict[int, List[Tuple[float, float]]], colors: List[str]) -> None:
+    def draw_routes(self, routes: Dict[int, List[Point]], colors: List[str]) -> None:
         for drone_id, route in routes.items():
             color = colors[drone_id % len(colors)]
             for i in range(len(route) - 1):
@@ -83,9 +80,9 @@ class Visualizer:
 
     def draw_drones(
             self,
-            routes: Dict[int, List[Tuple[float, float]]],
+            routes: Dict[int, List[Point]],
             frame: Dict[int, Tuple[float, float] | None],
-            flight_paths: Dict[int, List[Tuple[float, float]]],
+            flight_paths: Dict[int, List[Point]],
             last_positions: Dict[int, Tuple[float, float]],
             colors: List[str]
     ) -> None:
@@ -117,7 +114,7 @@ class Visualizer:
 
     def draw_legend(
             self,
-            routes: Dict[int, List[Tuple[float, float]]],
+            routes: Dict[int, List[Point]],
             colors: List[str],
             drone_configs: Dict[int, dict]
     ) -> None:
@@ -152,10 +149,10 @@ class Visualizer:
 
     def draw_full_frame(
             self,
-            points: List[Tuple[float, float]],
-            routes: Dict[int, List[Tuple[float, float]]],
+            points: List[Point],
+            routes: Dict[int, List[Point]],
             frame: Dict[int, Tuple[float, float] | None],
-            flight_paths: Dict[int, List[Tuple[float, float]]],
+            flight_paths: Dict[int, List[Point]],
             last_positions: Dict[int, Tuple[float, float]],
             colors: List[str],
             drone_configs: Dict[int, dict]

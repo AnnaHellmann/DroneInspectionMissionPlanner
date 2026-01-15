@@ -1,12 +1,9 @@
-# ui/map_info_window.py
-
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 from core.utils import euclidean_distance
 
 
 class MapInfoWindow:
-    """wyświetlanie okna info"""
 
     @staticmethod
     def show(parent, map_name, points):
@@ -35,15 +32,15 @@ class MapInfoWindow:
         height = max_y - min_y
 
         win = tk.Toplevel(parent)
-        win.title(f"Specyfikacja mapy: {map_name}")
+        win.title(f"Specyfikacja mapy")
         win.geometry("420x480")
         win.resizable(False, False)
 
-        tk.Label(win, text=f"Mapa: {map_name}", font=("Arial", 12, "bold")).pack(pady=10)
+        tk.Label(win, text=f"{map_name}", font=("Arial", 12, "bold")).pack(pady=10)
 
         info_text = (
             f"Liczba punktów: {num_points}\n"
-            f"Wymiary mapy (szer. × wys.): {width:.2f}m × {height:.2f}m\n"
+            f"Wymiary mapy (szer. × wys.): {width:.2f} m × {height:.2f} m\n"
             f"Minimalny dystans: {min_dist:.2f}m\n"
             f"Maksymalny dystans: {max_dist:.2f}m\n"
             f"Średni dystans: {avg_dist:.2f}m\n"

@@ -1,12 +1,7 @@
-# Dzieli punkty między drony (TaskAllocator – mTSP).
-# Rozwiązuje TSP dla każdego drona metodą GA lub PSO (TSPSolver).
-# Sprawdza wykonalność tras pod względem energii.
-# Zwraca zoptymalizowane trasy oraz czas optymalizacji.
-
 from algorithms.task_allocator import TaskAllocator
 from algorithms.tsp_solver import TSPSolver
 from typing import List, Tuple
-from core.config import ALLOC_METHOD
+from core.config import ALLOC_METHOD, GA_PROFILES, PSO_PROFILES
 
 from core.utils import euclidean_distance
 import time
@@ -14,8 +9,7 @@ import time
 Point = Tuple[float, float]
 
 class Optimizer:
-    """Dzieli punkty między drony (TaskAllocator – mTSP). Rozwiązuje TSP dla każdego drona metodą GA lub PSO (TSPSolver).
-    Sprawdza wykonalność tras pod względem energii. Zwraca zoptymalizowane trasy oraz czas optymalizacji."""
+
     def __init__(self, drone_configs, tsp_method):
         self.drone_configs = drone_configs
         self.tsp_method = tsp_method
@@ -23,8 +17,16 @@ class Optimizer:
         self.allocator = TaskAllocator(method=ALLOC_METHOD)
         self.solver = TSPSolver(method=tsp_method)
 
+        self.ga_params = None
+        self.pso_params = None
 
-    def optimize(self, points: List[Point], num_drones: int):
+    def optimize(self, points, num_drones, *, profile: str):
+
+        if profile not in GA_PROFILES or profile not in PSO_PROFILES:
+            raise ValueError(f"Nieznany profil algorytmu: {profile}")
+
+        self.ga_params = GA_PROFILES[profile]
+        self.pso_params = PSO_PROFILES[profile]
 
         if num_drones <= 0:
             return None
@@ -39,7 +41,7 @@ class Optimizer:
 
         start_time = time.time()
 
-        results = self.solver.solve_for_drones(task_allocation)
+        results = self.solver.solve_for_drones(task_allocation, ga_params=self.ga_params, pso_params=self.pso_params)
 
         all_feasible = True
         for drone_id, data in results.items():

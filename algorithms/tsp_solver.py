@@ -1,18 +1,11 @@
-# implementacja GA i PSO, Funkcja celu oparta jest
-# na koszcie energetycznym lotu wyznaczonym z parametrów
-# drona (bateria, czas lotu, prędkość, czas
-# obsługi punktu), z ograniczeniem do 80% pojemności baterii
 from __future__ import annotations
 from typing import List, Tuple, Dict
 from core.utils import euclidean_distance
+from core.config import BASE, ENERGY_LIMIT_RATIO
 import random
-import math
 import time
-from core import config
 
 Point = Tuple[float, float]
-BASE: Point = (0.0, 0.0)
-
 
 class TSPSolver:
     """implementacja GA i PSO, Funkcja celu oparta jest na koszcie energetycznym lotu wyznaczonym z parametrów drona
@@ -25,7 +18,6 @@ class TSPSolver:
         self.current_drone_config = None
 
     def compute_distance_matrix(self, points: List[Point]):
-        """Buduje macierz odległości Euklidesowych między punktami."""
         n = len(points)
         dist = [[0.0] * n for _ in range(n)]
         for i in range(n):
@@ -33,20 +25,18 @@ class TSPSolver:
                 dist[i][j] = euclidean_distance(points[i], points[j])
         return dist
 
-    def route_length(self, order, dist, points):
-        BASE = (0.0, 0.0)
+    def route_cost(self, order, points):
         route_coords = [BASE] + [points[i] for i in order] + [BASE]
 
         drone_config = self.current_drone_config
 
         E = self.compute_energy_cost(drone_config, route_coords)
 
-        if E > 0.8 * drone_config["battery_capacity"]:
+        if E > ENERGY_LIMIT_RATIO * drone_config["battery_capacity"]:
             return 1e12
 
         return E
 
-    #  Genetic Algorithm
     def create_random_route(self, n: int) -> List[int]:
         r = list(range(n))
         random.shuffle(r)
@@ -55,9 +45,9 @@ class TSPSolver:
     def initial_population(self, pop_size: int, n: int):
         return [self.create_random_route(n) for _ in range(pop_size)]
 
-    def tournament_selection(self, population, dist, points: List[Point], k=3):
+    def tournament_selection(self, population, points: List[Point], k=3):
         candidates = random.sample(population, k)
-        best = min(candidates, key=lambda r: self.route_length(r, dist, points))
+        best = min(candidates, key=lambda r: self.route_cost(r, points))
         return best[:]
 
     def order_crossover(self, p1: List[int], p2: List[int]):
@@ -76,32 +66,29 @@ class TSPSolver:
 
         return child
 
-    def swap_mutation(self, route: List[int], mutation_rate: float):
-        r = route[:]
-        if random.random() < mutation_rate:
-            i, j = random.sample(range(len(r)), 2)
-            r[i], r[j] = r[j], r[i]
-        return r
+    def solve_ga(
+            self,
+            points: List[Point],
+            *,
+            drone_config: Dict,
+            ga_params: Dict
+    ):
 
-    def solve_ga(self, points: List[Point], **params):
+        self.current_drone_config = drone_config
 
-        self.current_drone_config = params["drone_config"]
-
-        pop_size = params.get("pop_size", config.GA_PARAMS["pop_size"])
-        generations = params.get("generations", config.GA_PARAMS["generations"])
-        crossover_rate = params.get("crossover_rate", config.GA_PARAMS["crossover_rate"])
-        mutation_rate = params.get("mutation_rate", config.GA_PARAMS["mutation_rate"])
-        tournament_k = params.get("tournament_k", config.GA_PARAMS["tournament_k"])
+        pop_size = ga_params["pop_size"]
+        generations = ga_params["generations"]
+        crossover_rate = ga_params["crossover_rate"]
+        mutation_rate = ga_params["mutation_rate"]
+        tournament_k = ga_params["tournament_k"]
 
         n = len(points)
         if n == 0:
             return [], 0.0, [], 0.0
 
-        dist = self.compute_distance_matrix(points)
-
         population = self.initial_population(pop_size, n)
-        best_route = min(population, key=lambda r: self.route_length(r, dist, points))
-        best_cost = self.route_length(best_route, dist, points)
+        best_route = min(population, key=lambda r: self.route_cost(r, points))
+        best_cost = self.route_cost(best_route, points)
         history = [best_cost]
 
         start = time.time()
@@ -109,26 +96,25 @@ class TSPSolver:
         for _ in range(generations):
             new_pop = []
 
-            # --- ELITARYZM: Zachowaj 2 najlepszych osobników ---
-            population.sort(key=lambda r: self.route_length(r, dist, points))
+            population.sort(key=lambda r: self.route_cost(r, points))
             new_pop.extend([p[:] for p in population[:2]])
 
             while len(new_pop) < pop_size:
-                p1 = self.tournament_selection(population, dist, points, tournament_k)
-                p2 = self.tournament_selection(population, dist, points, tournament_k)
+                p1 = self.tournament_selection(population, points, tournament_k)
+                p2 = self.tournament_selection(population, points, tournament_k)
 
                 if random.random() < crossover_rate:
                     child = self.order_crossover(p1, p2)
                 else:
                     child = p1[:]
 
-                child = self.swap_mutation(child, mutation_rate)
+                child = self.inversion_mutation(child, mutation_rate)
                 new_pop.append(child)
 
             population = new_pop
 
-            curr_best = min(population, key=lambda r: self.route_length(r, dist, points))
-            curr_cost = self.route_length(curr_best, dist, points)
+            curr_best = min(population, key=lambda r: self.route_cost(r, points))
+            curr_cost = self.route_cost(curr_best, points)
 
             if curr_cost < best_cost:
                 best_cost = curr_cost
@@ -136,15 +122,15 @@ class TSPSolver:
 
             history.append(best_cost)
 
-        best_route = self.two_opt(best_route, dist, points)
-        best_cost = self.route_length(best_route, dist, points)
+        best_route = self.two_opt(best_route, points)
+        best_cost = self.route_cost(best_route, points)
 
         duration = time.time() - start
 
         return best_route, best_cost, history, duration
 
     def random_select_swaps(self, diffs: List[Tuple[int, int]], factor: float) -> List[Tuple[int, int]]:
-        """Losowo wybiera podzbiór swapów z listy diffs, skalowany przez factor."""
+        """Losowo wybiera podzbiór swapów."""
 
         if not diffs:
             return []
@@ -156,18 +142,22 @@ class TSPSolver:
 
         return random.sample(diffs, count)
 
-    # Particle Swam Optimization
-    def solve_pso(self, points: List[Point], **params):
+    def solve_pso(
+            self,
+            points: List[Point],
+            *,
+            drone_config: Dict,
+            pso_params: Dict
+    ):
 
-        self.current_drone_config = params["drone_config"]
+        self.current_drone_config = drone_config
 
-        iterations = params.get("iterations", config.PSO_PARAMS["iterations"])
-        swarm_size = params.get("swarm_size", config.PSO_PARAMS["swarm_size"])
-        c1 = params.get("c1", config.PSO_PARAMS["c1"])
-        c2 = params.get("c2", config.PSO_PARAMS["c2"])
+        iterations = pso_params["iterations"]
+        swarm_size = pso_params["swarm_size"]
+        c1 = pso_params["c1"]
+        c2 = pso_params["c2"]
 
         n = len(points)
-        dist = self.compute_distance_matrix(points)
 
         particles = []
         velocities = []
@@ -183,7 +173,7 @@ class TSPSolver:
 
             velocities.append([])
 
-            cost = self.route_length(perm, dist, points)
+            cost = self.route_cost(perm, points)
             pbest.append(perm[:])
             pbest_cost.append(cost)
 
@@ -213,7 +203,7 @@ class TSPSolver:
 
                 particles[i] = self.apply_swaps(particles[i], velocities[i])
 
-                cost = self.route_length(particles[i], dist, points)
+                cost = self.route_cost(particles[i], points)
                 if cost < pbest_cost[i]:
                     pbest[i] = particles[i][:]
                     pbest_cost[i] = cost
@@ -222,9 +212,8 @@ class TSPSolver:
                         gbest = particles[i][:]
                         gbest_cost = cost
 
-        # Optymalizacja końcowa
-        gbest = self.two_opt(gbest, dist, points)
-        gbest_cost = self.route_length(gbest, dist, points)
+        gbest = self.two_opt(gbest, points)
+        gbest_cost = self.route_cost(gbest, points)
 
         duration = time.time() - start
         return gbest, gbest_cost, duration
@@ -257,15 +246,14 @@ class TSPSolver:
         return p
 
     def inversion_mutation(self, route: List[int], mutation_rate: float):
-        """Odwraca losowy fragment trasy - znacznie skuteczniejsze dla TSP niż swap."""
+        """Odwraca losowy fragment trasy"""
         r = route[:]
         if random.random() < mutation_rate:
-            # Wybieramy dwa punkty i odwracamy wszystko pomiędzy nimi
             i, j = sorted(random.sample(range(len(r)), 2))
             r[i:j + 1] = r[i:j + 1][::-1]
         return r
 
-    def two_opt(self, route: List[int], dist, points) -> List[int]:
+    def two_opt(self, route: List[int], points) -> List[int]:
         """Lokalna optymalizacja: usuwa skrzyżowania w trasie."""
         best_route = route[:]
         improved = True
@@ -274,14 +262,12 @@ class TSPSolver:
             improved = False
             for i in range(1, len(best_route) - 2):
                 for j in range(i + 1, len(best_route)):
-                    if j - i == 1: continue  # Sąsiednie punkty - pomijamy
+                    if j - i == 1: continue
 
-                    # Tworzymy nową trasę przez odwrócenie segmentu
                     new_route = best_route[:]
-                    new_route[i:j] = best_route[i:j][::-1]
+                    new_route[i:j] = reversed(best_route[i:j])
 
-                    # Sprawdzamy, czy nowa trasa jest lepsza (krótsza/mniej energochłonna)
-                    if self.route_length(new_route, dist, points) < self.route_length(best_route, dist, points):
+                    if self.route_cost(new_route, points) < self.route_cost(best_route, points):
                         best_route = new_route
                         improved = True
             if not improved: break
@@ -315,7 +301,13 @@ class TSPSolver:
             total += euclidean_distance(route_coords[i], route_coords[i + 1])
         return total
 
-    def solve_for_drones(self, task_allocation: Dict[int, List[Point]], **params) -> Dict[int, Dict]:
+    def solve_for_drones(
+            self,
+            task_allocation: Dict[int, List[Point]],
+            *,
+            ga_params: Dict,
+            pso_params: Dict
+    ) -> Dict[int, Dict]:
 
         results: Dict[int, Dict] = {}
 
@@ -346,7 +338,7 @@ class TSPSolver:
                 distance = self.compute_route_distance(route_coords)
 
                 feasible = (
-                        energy <= 0.8 * drone_config["battery_capacity"]
+                        energy <= ENERGY_LIMIT_RATIO * drone_config["battery_capacity"]
                         and distance <= drone_config["range"]
                 )
 
@@ -362,25 +354,18 @@ class TSPSolver:
 
             self.current_drone_config = drone_config
 
-            ga_params = {**config.GA_PARAMS, "drone_config": drone_config}
-            pso_params = {**config.PSO_PARAMS, "drone_config": drone_config}
-
-            for key, val in params.items():
-                if key in config.GA_PARAMS:
-                    ga_params[key] = val
-                if key in config.PSO_PARAMS:
-                    pso_params[key] = val
-
             if self.method == "ga":
                 order, cost, history, duration = self.solve_ga(
                     filtered_points,
-                    **ga_params
+                    drone_config=drone_config,
+                    ga_params=ga_params
                 )
 
             elif self.method == "pso":
                 order, cost, duration = self.solve_pso(
                     filtered_points,
-                    **pso_params
+                    drone_config=drone_config,
+                    pso_params=pso_params
                 )
 
             else:
@@ -392,7 +377,7 @@ class TSPSolver:
             real_distance = self.compute_route_distance(route_coords)
 
             feasible = (
-                    real_energy <= 0.8 * drone_config["battery_capacity"]
+                    real_energy <= ENERGY_LIMIT_RATIO * drone_config["battery_capacity"]
                     and real_distance <= drone_config["range"]
             )
 

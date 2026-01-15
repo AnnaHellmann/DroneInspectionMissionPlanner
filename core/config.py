@@ -5,21 +5,34 @@ WINDOW_SIZE = "1000x650"
 
 SIDEBAR_BG = "#e0e0e0"
 CANVAS_BG = "#fafafa"
-
+DRONE_FRAME_BG = "#f0f0f0"
 BACKGROUND_COLOR = "#f4f4f4"
 
 DEFAULT_DRONE_COUNT = [1, 2, 3, 4, 5]
 DEFAULT_TSP_METHODS = ["GA", "PSO"]
 
-DRONE_COLORS = ["red", "orange", "green", "blue", "purple"]
-DRONE_NAMES = [" ", "DJI Mini 3 Pro", "DJI Air 2S", "DJI Mavic 3", "DJI Matrice 30"]
+BASE = (0.0, 0.0)
+ENERGY_LIMIT_RATIO = 0.8
 
-SIM_SPEED = 40.0
-SIM_TIMESTEP = 0.05
-ANIMATION_DELAY = 30
+DRONE_COLORS = ["red", "orange", "green", "blue", "purple"]
+
+EMPTY_DRONE = "— brak —"
+DRONE_NAMES = [EMPTY_DRONE, "DJI Mini 3 Pro", "DJI Air 2S", "DJI Mavic 3", "DJI Matrice 30"]
+
+SIM_SPEEDUP = 40.0
+SIM_TIMESTEP_S = 0.05
+ANIMATION_DELAY_MS = 30
+
+MAP_TO_PROFILE = {
+        "Mapa 100": "random100",
+        "Mapa 8x8": "8x8",
+        "Mapa 10x15": "10x15",
+        "Mapa 16x16": "16x16",
+        "Mapa 20x20": "20x20"
+    }
 
 DRONE_MODELS = {
-    DRONE_NAMES[0]: {
+    EMPTY_DRONE: {
         "Zasięg [m]": 0,
         "Czas lotu [s]": 0,
         "Pojemność baterii [mAh]": 0,
@@ -55,53 +68,74 @@ DRONE_MODELS = {
         "Czas obsługi punktu [s]": 5
     }
 }
-# #8x8
-# GA_PARAMS = {
-#     "pop_size": 50,
-#     "generations": 150,
-#     "crossover_rate": 0.8,
-#     "mutation_rate": 0.1,
-#     "tournament_k": 2,
-# }
-#
-# PSO_PARAMS = {
-#     "iterations": 40,
-#     "swarm_size": 200,
-#     "w": 0.0,  # inercja niewykorzystywana dla pso permutacji
-#     "c1": 1.5,  # cognitive component
-#     "c2": 1.5,  # social component
-# }
 
-#10x15
-GA_PARAMS = {
-    "pop_size": 100,
-    "generations": 500,
-    "crossover_rate": 0.9,
-    "mutation_rate": 0.15,
-    "tournament_k": 3,
+GA_PROFILES = {
+    "random100": {
+            "pop_size": 120,
+            "generations": 350,
+            "crossover_rate": 0.9,
+            "mutation_rate": 0.2,
+            "tournament_k": 4,
+        },
+    "8x8": {
+        "pop_size": 50,
+        "generations": 150,
+        "crossover_rate": 0.8,
+        "mutation_rate": 0.1,
+        "tournament_k": 2,
+    },
+    "10x15": {
+        "pop_size": 100,
+        "generations": 500,
+        "crossover_rate": 0.9,
+        "mutation_rate": 0.15,
+        "tournament_k": 3,
+    },
+    "16x16": {
+        "pop_size": 150,
+        "generations": 500,
+        "crossover_rate": 0.9,
+        "mutation_rate": 0.2,
+        "tournament_k": 4,
+    },
+    "20x20": {
+        "pop_size": 200,
+        "generations": 600,
+        "crossover_rate": 0.9,
+        "mutation_rate": 0.3,
+        "tournament_k": 5,
+    }
 }
 
-PSO_PARAMS = {
-    "iterations": 120,
-    "swarm_size": 800,
-    "w": 0.0,  # inercja niewykorzystywana dla pso permutacji
-    "c1": 1.2,  # cognitive component
-    "c2": 2.0,  # social component
+PSO_PROFILES = {
+"random100": {
+        "iterations": 300,
+        "swarm_size": 600,
+        "c1": 1.0,
+        "c2": 2.2,
+    },
+    "8x8": {
+        "iterations": 40,
+        "swarm_size": 200,
+        "c1": 1.5,
+        "c2": 1.5,
+    },
+    "10x15": {
+        "iterations": 120,
+        "swarm_size": 800,
+        "c1": 1.2,
+        "c2": 2.0,
+    },
+    "16x16": {
+        "iterations": 250,
+        "swarm_size": 600,
+        "c1": 1.3,
+        "c2": 2.0,
+    },
+    "20x20": {
+        "iterations": 300,
+        "swarm_size": 800,
+        "c1": 1.3,
+        "c2": 2.2,
+    },
 }
-
-# #20x20
-# GA_PARAMS = {
-#     "pop_size": 150,
-#     "generations": 400,
-#     "crossover_rate": 0.9,
-#     "mutation_rate": 0.3,
-#     "tournament_k": 5,
-# }
-#
-# PSO_PARAMS = {
-#     "iterations": 600,
-#     "swarm_size": 120,
-#     "w": 0.0,  # inercja niewykorzystywana dla pso permutacji
-#     "c1": 0.8,  # cognitive component
-#     "c2": 2.5,  # social component
-# }

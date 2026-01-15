@@ -1,6 +1,6 @@
-
 from typing import List, Tuple, Dict
 from core.utils import euclidean_distance
+from core.config import BASE, ENERGY_LIMIT_RATIO
 
 try:
     from sklearn.cluster import KMeans
@@ -10,7 +10,6 @@ except ImportError:
     SKLEARN_AVAILABLE = False
 
 Point = Tuple[float, float]
-BASE = (0.0, 0.0)
 
 class TaskAllocator:
     def __init__(self, method):
@@ -18,7 +17,7 @@ class TaskAllocator:
 
     def allocate(self, points, num_drones, drone_configs):
         if self.method == "C":
-            return allocate_option_C(points, drone_configs)
+            return energy_aware_weighted_clustering(points, drone_configs)
 
         else:
             return {
@@ -43,20 +42,18 @@ def route_energy(pts: List[Point], cfg: Dict) -> float:
 
     return k * total_t
 
-
 def energy_ok(pts, cfg) -> bool:
-    return route_energy(pts, cfg) <= 0.8 * cfg["battery_capacity"]
-
-# Power-Weighted KMeans Allocation
+    return route_energy(pts, cfg) <= ENERGY_LIMIT_RATIO * cfg["battery_capacity"]
 
 def drone_power(cfg):
+    """Miara "mocy operacyjnej" drona, wykorzystywana do ważenia klastrów w alokacji zadań"""
     return (
         0.4 * cfg["speed"] +
         0.3 * (cfg["flight_time"] / 60) +
         0.3 * (cfg["battery_capacity"] / 1000)
     )
 
-def allocate_option_C(points: List[Point], drone_configs: Dict[int, Dict]):
+def energy_aware_weighted_clustering(points: List[Point], drone_configs: Dict[int, Dict]):
 
     num = len(drone_configs)
     if not SKLEARN_AVAILABLE:
@@ -133,7 +130,7 @@ def allocate_option_C(points: List[Point], drone_configs: Dict[int, Dict]):
 
                 def score(idx):
                     dist = euclidean_distance(kmeans.cluster_centers_[idx], far)
-                    return dist / (powers[idx] + 1e-6)
+                    return dist / powers[idx]
 
                 best = min(candidates, key=score)
 

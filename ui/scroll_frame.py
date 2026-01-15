@@ -1,11 +1,11 @@
-# ui/scroll_frame.py
 import tkinter as tk
 from tkinter import ttk
+from core.config import SIDEBAR_BG
 
 
 class ScrollFrame(tk.Frame):
 
-    def __init__(self, parent, bg="#e0e0e0", *args, **kwargs):
+    def __init__(self, parent, bg=SIDEBAR_BG, *args, **kwargs):
         super().__init__(parent, bg=bg, *args, **kwargs)
 
         self.canvas = tk.Canvas(self, bg=bg, highlightthickness=0)
@@ -35,12 +35,12 @@ class ScrollFrame(tk.Frame):
         elif event.num == 5:
             self.canvas.yview_scroll(1, "units")
 
-    def _bind_mousewheel(self, event):
+    def _bind_mousewheel(self, _event):
         self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
         self.canvas.bind_all("<Button-4>", self._on_mousewheel)
         self.canvas.bind_all("<Button-5>", self._on_mousewheel)
 
-    def _unbind_mousewheel(self, event):
+    def _unbind_mousewheel(self, _event):
         self.canvas.unbind_all("<MouseWheel>")
         self.canvas.unbind_all("<Button-4>")
         self.canvas.unbind_all("<Button-5>")

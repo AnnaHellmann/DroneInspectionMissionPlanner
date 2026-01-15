@@ -1,5 +1,3 @@
-# symulacja z rzeczywistym czasem + przyspieszenie animacji
-
 import time
 import math
 
@@ -32,7 +30,6 @@ class Simulator:
         return segments
 
     def simulate(self):
-        """zwraca w każdej klatce pozycje dronów. Realny czas liczony normalnie, dzielony przez speedup."""
         state = {d: "move" for d in self.segments}
         seg_idx = {d: 0 for d in self.segments}
         progress = {d: 0.0 for d in self.segments}
